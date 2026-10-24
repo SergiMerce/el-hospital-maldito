@@ -1,24 +1,2986 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <!-- El título que sale en la pestaña del navegador -->
-  <title>El Hospital Maldito</title>
-  <style>
-    /* Aquí van los colores y el estilo de la página */
-    body {
-      background-color: black;   /* fondo negro, ¡da más miedo! */
-      color: darkred;            /* letras rojo oscuro */
-      font-family: Arial, sans-serif;
-      text-align: center;        /* todo centrado */
-      padding-top: 150px;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>El Hospital Maldito</title>
+<style>
+  /* ====== ESTILOS: colores y posiciones de los textos ====== */
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; font-family: Arial, sans-serif; color: #fff; }
+  canvas { display: block; }
+  #hud { position: fixed; inset: 0; pointer-events: none; text-shadow: 0 0 6px #000; }
+  #noche { position: absolute; top: 18px; left: 20px; font-size: 15px; color: #ccc; }
+  #hora { position: absolute; top: 12px; right: 22px; font-size: 32px; font-weight: bold; }
+  .barra { position: absolute; left: 20px; width: 200px; height: 10px; border: 2px solid #777; }
+  .barra div { height: 100%; width: 100%; }
+  .barraTxt { position: absolute; left: 20px; font-size: 13px; color: #ccc; }
+  #mira { position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px; background: rgba(255,255,255,.5); border-radius: 50%; }
+  #aviso { position: absolute; bottom: 90px; width: 100%; text-align: center; font-size: 20px; color: #f55; font-weight: bold; }
+  #pista { position: absolute; bottom: 130px; width: 100%; text-align: center; font-size: 18px; color: #ffd76a; }
+  #flash { position: fixed; inset: 0; background: #900; opacity: 0; pointer-events: none; }
+  .pantalla { position: fixed; inset: 0; background: rgba(0,0,0,.92); display: flex; flex-direction: column;
+              align-items: center; justify-content: center; text-align: center; cursor: pointer; padding: 16px; }
+  .pantalla h1 { font-family: Georgia, serif; color: #a00; font-size: clamp(34px, 7vw, 64px); margin: 0 0 6px; letter-spacing: 2px; }
+  .pantalla h2 { font-family: Georgia, serif; font-style: italic; color: #ccc; font-weight: normal; margin: 0 0 28px; }
+  .pantalla p { color: #aaa; margin: 5px 0; font-size: 17px; }
+  .pantalla .boton { margin-top: 30px; font-size: 22px; font-weight: bold; color: #fff; animation: parpadea 1s infinite; }
+  .pantalla .firma { position: absolute; bottom: 18px; color: #555; font-size: 14px; }
+  .pantalla small { color: #777; }
+  .oculto { display: none !important; }
+  @keyframes parpadea { 50% { opacity: .2; } }
+  /* botones de las noches del menú */
+  #noches { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin: 22px 0 10px; }
+  .noche { width: 150px; padding: 14px 8px; border: 2px solid #511; background: #140606; color: #ddd;
+           font-size: 16px; cursor: pointer; border-radius: 6px; font-family: Georgia, serif; }
+  .noche b { display: block; font-size: 20px; color: #fff; margin-bottom: 4px; }
+  .noche:hover { background: #2a0a0a; border-color: #a22; }
+  .noche.completada { border-color: #2a6a2a; }
+  .noche.bloqueada { opacity: .35; cursor: not-allowed; }
+  /* pantalla de la historia */
+  /* la historia se ve como una película: bandas negras arriba y abajo */
+  #historia { background: transparent; justify-content: space-between; padding: 0; }
+  #historia .banda { width: 100%; height: 12vh; background: #000; display: flex; align-items: center; justify-content: center; }
+  #historiaTitulo { font-family: Georgia, serif; color: #a00; font-size: 22px; letter-spacing: 4px; }
+  #historiaTexto { font-family: Georgia, serif; font-size: clamp(16px, 2.2vw, 22px); color: #eee; max-width: 800px; line-height: 1.4; text-shadow: 0 0 8px #000, 0 0 3px #000; }
+  #historia .boton { font-size: 15px; color: #888; margin-top: 0; }
+  /* ====== LAS CÁMARAS DE SEGURIDAD ====== */
+  #cctv { position: fixed; inset: 0; pointer-events: none; font-family: 'Courier New', monospace; color: #e8f0e8; text-shadow: 0 0 6px #000, 0 0 2px #000; }
+  #cctvNombre { position: absolute; top: 22px; left: 28px; font-size: 26px; font-weight: bold; letter-spacing: 2px; }
+  #cctvRec { position: absolute; top: 22px; right: 160px; font-size: 22px; color: #ff3030; animation: parpadea 1s infinite; }
+  #cctvFecha { position: absolute; bottom: 22px; right: 28px; font-size: 18px; }
+  #cctvAyuda { position: absolute; bottom: 22px; left: 28px; font-size: 15px; color: #c8d8c8; }
+  #cctvMapa { position: absolute; bottom: 60px; right: 28px; width: 250px; height: 140px; background: rgba(0,0,0,.55); border: 2px solid #8a9a8a; }
+  #cctvMapa div { position: absolute; border: 1px solid #8a9a8a; font-size: 10px; display: flex; align-items: center; justify-content: center; color: #cde; }
+  #cctvMapa div.activa { background: #2e7d4f; color: #fff; }
+  #cctvMapa div.tu { background: #6a1a1a; border-color: #c55; }
+  #cctvFiltro { position: absolute; inset: 0; background: repeating-linear-gradient(0deg, rgba(0,0,0,.18) 0 2px, transparent 2px 4px); }
+  /* los párpados, para cuando te despiertas */
+  #parpados { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+  #parpados div { position: absolute; left: -10%; width: 120%; height: 55%; background: #000; transition: none; }
+  #parpadoArriba { top: 0; border-radius: 0 0 50% 50% / 0 0 40% 40%; }
+  #parpadoAbajo { bottom: 0; border-radius: 50% 50% 0 0 / 40% 40% 0 0; }
+  /* ====== LAS PISTAS ====== */
+  #mision { position: absolute; top: 40px; left: 20px; font-size: 14px; color: #e8d8a0; }
+  #pistaVista, #cuaderno { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,.85); display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .papel { background: #e6dfc8; color: #2a2418; max-width: 560px; width: 100%; padding: 28px 32px; box-shadow: 0 0 40px #000; transform: rotate(-1deg);
+           font-family: Georgia, serif; font-size: 18px; line-height: 1.5; background-image: radial-gradient(circle at 80% 20%, rgba(120,90,40,.25), transparent 40%), radial-gradient(circle at 15% 85%, rgba(120,20,10,.2), transparent 30%); }
+  .papel h2 { margin: 0 0 6px; font-size: 24px; color: #5a1010; }
+  .papel small { color: #7a6a4a; }
+  .papel .cerrar { margin-top: 18px; font-size: 14px; color: #7a6a4a; text-align: center; font-family: Arial, sans-serif; }
+  #cuaderno .papel { max-height: 80vh; overflow-y: auto; max-width: 700px; cursor: pointer; }
+  .pagina { border-bottom: 1px dashed #a89a78; padding: 8px 0; }
+  .pagina h3 { margin: 0 0 4px; font-size: 17px; color: #5a1010; }
+  .pagina p { margin: 0; font-size: 15px; }
+  .pagina.bloqueada { opacity: .45; }
+  #botonCuaderno { margin-top: 14px; padding: 10px 18px; background: #2a2010; color: #e8d8a0; border: 2px solid #7a6a3a; border-radius: 6px; font-family: Georgia, serif; font-size: 16px; cursor: pointer; }
+  #botonCuaderno:hover { background: #3a2c14; }
+  #cargando { position: fixed; inset: 0; background: #000; display: flex; align-items: center; justify-content: center; font-family: Georgia, serif; color: #a00; font-size: 26px; letter-spacing: 3px; }
+</style>
 </head>
 <body>
-  <!-- El texto que se ve en la página -->
-  <h1>🏥 El Hospital Maldito 🏥</h1>
-  <p>Un juego de Sergi</p>
-  <p>Próximamente...</p>
+
+<div id="cargando">PREPARANDO EL HOSPITAL…</div>
+
+<!-- Textos que se ven encima del juego -->
+<div id="hud">
+  <div id="noche"></div>
+  <div id="mision"></div>
+  <div id="hora">12 AM</div>
+  <div id="mira"></div>
+  <div id="pista"></div>
+  <div id="aviso"></div>
+  <div class="barraTxt" style="bottom:66px">Energía de las puertas</div>
+  <div class="barra" id="energia" style="bottom:48px"><div style="background:#e0c040"></div></div>
+  <div class="barraTxt" style="bottom:28px">Correr (Shift)</div>
+  <div class="barra" id="aguante" style="bottom:12px"><div style="background:#4c4"></div></div>
+</div>
+<div id="flash"></div>
+<!-- Una pista que acabas de encontrar -->
+<div id="pistaVista" class="oculto">
+  <div class="papel">
+    <small id="pistaNumero"></small>
+    <h2 id="pistaTitulo"></h2>
+    <div id="pistaTexto"></div>
+    <div class="cerrar">Pulsa E para seguir</div>
+  </div>
+</div>
+<!-- El cuaderno con todas las pistas -->
+<div id="cuaderno" class="oculto">
+  <div class="papel">
+    <h2>📔 Cuaderno de pistas</h2>
+    <div id="cuadernoLista"></div>
+    <div class="cerrar">Haz clic para cerrar</div>
+  </div>
+</div>
+<div id="parpados" class="oculto"><div id="parpadoArriba"></div><div id="parpadoAbajo"></div></div>
+<!-- Lo que se ve encima de las cámaras de seguridad -->
+<div id="cctv" class="oculto">
+  <div id="cctvFiltro"></div>
+  <div id="cctvNombre"></div>
+  <div id="cctvRec">● REC</div>
+  <div id="cctvMapa"></div>
+  <div id="cctvAyuda">A / D → cambiar de cámara &nbsp;·&nbsp; E → dejar las cámaras</div>
+  <div id="cctvFecha"></div>
+</div>
+
+<!-- Pantalla de título y menú de noches -->
+<div id="titulo" class="pantalla" style="cursor:default">
+  <h1>EL HOSPITAL MALDITO</h1>
+  <p>Sobrevive en el hospital desde las 12 AM hasta las 6 AM.</p>
+  <p><b>W A S D</b> → caminar &nbsp;·&nbsp; <b>Ratón</b> → mirar &nbsp;·&nbsp; <b>Shift</b> → correr &nbsp;·&nbsp; <b>E</b> → linterna</p>
+  <p>En la sala de seguridad: mira un <b>botón rojo</b> y pulsa <b>E</b> para cerrar o abrir esa puerta.</p>
+  <p>Mira los <b>monitores</b> y pulsa <b>E</b> para ver las <b>cámaras</b>. ¡Todo gasta energía!</p>
+  <div id="noches"></div>
+  <small>✅ completada &nbsp;·&nbsp; 🔒 bloqueada: supera la noche anterior para desbloquearla</small>
+  <button id="botonCuaderno">📔 Cuaderno de pistas (<span id="cuentaPistas">0/100</span>)</button>
+  <div class="firma">Un juego de Sergi</div>
+</div>
+
+<!-- Pantalla de la historia (sale antes de cada noche) -->
+<div id="historia" class="pantalla oculto">
+  <div class="banda"><div id="historiaTitulo"></div></div>
+  <div id="historiaTexto"></div>
+  <div class="banda"><div class="boton">Haz clic para continuar</div></div>
+</div>
+
+<!-- Pantalla de pausa -->
+<div id="pausa" class="pantalla oculto">
+  <h1>PAUSA</h1>
+  <div class="boton">Haz clic para seguir jugando</div>
+</div>
+
+<!-- Pantalla de perder -->
+<div id="perdido" class="pantalla oculto">
+  <h1>TE HAN ATRAPADO</h1>
+  <p id="culpableTxt"></p>
+  <div class="boton">Haz clic para volver al menú</div>
+</div>
+
+<!-- Pantalla de ganar -->
+<div id="ganado" class="pantalla oculto">
+  <h1 style="color:#6f6">6 AM</h1>
+  <h2 id="ganadoTxt">¡HAS SOBREVIVIDO!</h2>
+  <div class="boton">Haz clic para volver al menú</div>
+</div>
+
+<!-- Three.js: la "caja de herramientas" para hacer juegos en 3D -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<!-- Efectos de cine: brillos (bloom) y filtros de pantalla -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+<!-- Para juntar muchos objetos en uno y que el juego vaya rápido -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/BufferGeometryUtils.js"></script>
+
+<script>
+// =====================================================
+//  EL HOSPITAL MALDITO - Un juego de Sergi
+//  Versión 3D realista
+// =====================================================
+
+// ====== AJUSTES (¡puedes cambiar estos números!) ======
+const CONFIG = {
+  segundosPorHora: 45,   // cuánto dura cada hora del juego (en segundos de verdad)
+  velocidad: 3.2,        // lo rápido que caminas
+  velocidadCorrer: 5.6,  // lo rápido que corres con Shift
+  segundosCorriendo: 5,  // cuánto aguantas corriendo sin parar
+  distanciaCaza: 14,     // a qué distancia te ven los monstruos
+  gastoPuerta: 0.45,     // energía que gasta cada puerta cerrada, cada segundo
+  gastoBase: 0.08,       // energía que se gasta siempre
+  gastoCamaras: 0.25,    // energía que gastan las cámaras mientras las miras
+  sustosCada: 90,        // ✏️ cada cuántos segundos (más o menos) te pega un susto sorpresa
+  volumenAmbiente: 0.7,  // ✏️ volumen de los ruidos de terror de fondo (0 = sin ruido, 1 = máximo)
+  textoHistoria: false,  // ✏️ pon true si quieres que salga texto debajo de los dibujos
+  calidad: 'alta',       // ✏️ pon 'baja' si el juego va lento en tu ordenador
+};
+const ALTA = CONFIG.calidad === 'alta';
+
+// ====== LAS NOCHES ======
+// rapidez = cuánto más rápidos van los monstruos (1 = normal)
+// adelanto = cuántas horas antes se despiertan
+// historia = los textos que salen antes de empezar la noche (uno por clic)
+// ✏️ ¡Puedes ponerles nombre a las noches 2, 3, 4 y 5, y cambiar la historia!
+const NIÑA = 'Lucía';   // ✏️ el nombre de la niña: cámbialo si quieres
+const NOCHES = [
+  { nombre: 'La noche donde comenzó todo', rapidez: 1.0, adelanto: 0, historia: [
+    { dibujo: 'llegada',   texto: `Hace muchos años, una niña llamada ${NIÑA} ingresó en este hospital, abrazada a su muñeco de trapo.` },
+    { dibujo: 'doctora',   texto: 'La noche de su operación, la doctora de guardia sonreía de una forma muy extraña…' },
+    { dibujo: 'quirofano', texto: `${NIÑA} entró en el quirófano. Nunca volvió a salir.` },
+    { dibujo: 'pasillo',   texto: 'Desde entonces, cada noche, alguien recorre los pasillos. Tú eres el nuevo guardia de seguridad.' },
+    { dibujo: 'reloj',     texto: 'Sobrevive hasta las 6 AM.' },
+  ]},
+  { nombre: '', rapidez: 1.15, adelanto: 0, historia: [
+    { dibujo: 'nota',      texto: 'En un cajón de la sala de seguridad encuentras una nota del guardia anterior.' },
+    { dibujo: 'doctora',   texto: '"La doctora sigue aquí. Nunca se fue."' },
+    { dibujo: 'robot',     texto: '"Y el robot enfermero que la ayudaba en las operaciones… sigue obedeciendo sus órdenes."' },
+  ]},
+  { nombre: '', rapidez: 1.3, adelanto: 1, historia: [
+    { dibujo: 'cama',      texto: `En la sala de niños sigue la cama de ${NIÑA}. Su muñeco ya no está encima.` },
+    { dibujo: 'muneco',    texto: 'Dicen que el muñeco recorre el hospital por las noches…' },
+    { dibujo: 'munecoFoto', texto: `…buscando a ${NIÑA}.` },
+  ]},
+  { nombre: '', rapidez: 1.45, adelanto: 1, historia: [
+    { dibujo: 'camara',    texto: 'Las cámaras han grabado una sombra con bata saliendo de la morgue.' },
+    { dibujo: 'silueta',   texto: 'Nadie sabe quién es.' },
+    { dibujo: 'siluetaNina', texto: `Algunos creen que es la sombra de ${NIÑA}, que intenta contarte la verdad.` },
+  ]},
+  { nombre: '', rapidez: 1.6, adelanto: 2, historia: [
+    { dibujo: 'reloj',     texto: 'La última noche.' },
+    { dibujo: 'doctoraRoja', texto: `Si la doctora te atrapa, nadie sabrá jamás lo que le pasó a ${NIÑA}.` },
+    { dibujo: 'amanecer',  texto: `Si sobrevives hasta las 6 AM… ${NIÑA} por fin podrá descansar.` },
+  ], final: `${NIÑA} ya puede descansar. Gracias, guardia.` },
+];
+
+// ====== EL MAPA DEL HOSPITAL ======
+// #  = pared        .  = suelo        c  = camilla con alguien tapado
+// S  = la sala de seguridad (donde empiezas)
+// I, D = puertas izquierda y derecha de la sala de seguridad
+// Q, N, A, M = donde duerme cada monstruo
+const MAPA = [
+  '#########################',
+  '#.......#.......#.......#',
+  '#...Q...#...N...#...A...#',
+  '#.c.....#.......#.....c.#',
+  '#.......#.......#.......#',
+  '####.#######.#######.####',
+  '#.......................#',
+  '#...c...........c.......#',
+  '####.###############.####',
+  '#.......#########.......#',
+  '#.c.......I...D.........#',
+  '#...M...###.S.###...R...#',
+  '#.......#########...c...#',
+  '#########################',
+];
+const CELDA = 4;        // lo grande que es cada casilla del mapa (en metros)
+const ALTO_PARED = 3.2; // lo alto que es el techo
+
+// Los carteles de cada sala
+const CARTELES = { Q: 'QUIRÓFANO', N: 'SALA DE NIÑOS', A: 'ALMACÉN', M: 'MORGUE', R: 'RECEPCIÓN' };
+
+// ====== LOS MONSTRUOS ======
+// hora      = a qué hora se despierta (0 = 12 AM)
+// velocidad = lo rápido que va (tú caminas a 3.2)
+// tamano    = 1 es normal, más pequeño o más grande
+const MONSTRUOS_INFO = {
+  Q: { id: 'doctora', nombre: 'La Doctora Loca',    hora: 0, velocidad: 2.5, tamano: 1 },
+  A: { id: 'robot',   nombre: 'El Robot Enfermero', hora: 2, velocidad: 1.9, tamano: 1.05 },
+  N: { id: 'muneco',  nombre: 'El Muñeco',          hora: 3, velocidad: 2.8, tamano: 0.85 },
+  M: { id: 'silueta', nombre: 'La Silueta en Bata', hora: 4, velocidad: 2.2, tamano: 1.12 },
+};
+
+// =====================================================
+//  PREPARAR EL MUNDO 3D
+// =====================================================
+const renderer = new THREE.WebGLRenderer({ antialias: !ALTA, powerPreference: 'high-performance' });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, ALTA ? 1.5 : 1));
+renderer.shadowMap.enabled = ALTA;                 // sombras
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.prepend(renderer.domElement);
+
+const escena = new THREE.Scene();
+escena.background = new THREE.Color(0x020303);
+escena.fog = new THREE.FogExp2(0x020303, 0.075);   // niebla: a lo lejos todo se vuelve negro
+
+// La cámara son tus ojos
+const camara = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, 0.05, 40);
+camara.rotation.order = 'YXZ';
+escena.add(camara);
+
+// Luz muy flojita para que no esté todo totalmente negro
+const luzAmbiente = new THREE.HemisphereLight(0x1a2a2a, 0x0a0806, 0.25);
+escena.add(luzAmbiente);
+
+// Tu linterna: va pegada a tus ojos
+const linterna = new THREE.SpotLight(0xffe8c0, 1.7, 24, Math.PI / 6.5, 0.6, 2);
+linterna.castShadow = ALTA;
+linterna.shadow.mapSize.set(1024, 1024);
+linterna.shadow.camera.near = 0.1;
+linterna.shadow.bias = -0.0015;
+linterna.position.set(0.15, -0.12, 0);
+camara.add(linterna);
+camara.add(linterna.target);
+linterna.target.position.set(0.05, -0.05, -1);
+
+// =====================================================
+//  TEXTURAS REALISTAS (dibujadas por el ordenador)
+//  Cada material tiene: color, "relieve" (normal) y "brillo" (rugosidad)
+// =====================================================
+function lienzo(tam) { const c = document.createElement('canvas'); c.width = c.height = tam; return c; }
+const azar = (a, b) => a + Math.random() * (b - a);
+
+// manchas suaves (suciedad, humedad...)
+function manchas(g, tam, n, color, rMin, rMax, alfaMax) {
+  for (let i = 0; i < n; i++) {
+    const x = Math.random() * tam, y = Math.random() * tam, r = azar(rMin, rMax);
+    const grad = g.createRadialGradient(x, y, 0, x, y, r);
+    grad.addColorStop(0, `rgba(${color},${azar(0, alfaMax)})`);
+    grad.addColorStop(1, `rgba(${color},0)`);
+    g.fillStyle = grad;
+    g.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+}
+// regueros que bajan por la pared
+function regueros(g, tam, n, color, alfa) {
+  for (let i = 0; i < n; i++) {
+    const x = Math.random() * tam, y = Math.random() * tam * 0.6, largo = azar(40, 250), ancho = azar(1, 5);
+    const grad = g.createLinearGradient(0, y, 0, y + largo);
+    grad.addColorStop(0, `rgba(${color},${alfa})`);
+    grad.addColorStop(1, `rgba(${color},0)`);
+    g.fillStyle = grad;
+    g.fillRect(x, y, ancho, largo);
+  }
+}
+// convierte un mapa de alturas (blanco = alto) en un mapa de relieve
+function relieve(alturas, fuerza) {
+  const w = alturas.width, h = alturas.height;
+  const src = alturas.getContext('2d').getImageData(0, 0, w, h).data;
+  const c = lienzo(w), g = c.getContext('2d'), img = g.createImageData(w, h);
+  const H = (x, y) => src[((((y + h) % h) * w) + ((x + w) % w)) * 4] / 255;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const dx = (H(x + 1, y) - H(x - 1, y)) * fuerza, dy = (H(x, y + 1) - H(x, y - 1)) * fuerza;
+    const l = Math.hypot(dx, dy, 1), i = (y * w + x) * 4;
+    img.data[i] = (-dx / l * 0.5 + 0.5) * 255;
+    img.data[i + 1] = (dy / l * 0.5 + 0.5) * 255;
+    img.data[i + 2] = (1 / l * 0.5 + 0.5) * 255;
+    img.data[i + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+  return c;
+}
+function texturaDe(c, repetir, esColor) {
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  if (repetir) t.repeat.set(repetir[0], repetir[1]);
+  if (esColor) t.encoding = THREE.sRGBEncoding;
+  t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  return t;
+}
+function material(color, altura, rugosidad, opciones = {}) {
+  const r = opciones.repetir;
+  return new THREE.MeshStandardMaterial(Object.assign({
+    map: texturaDe(color, r, true),
+    normalMap: texturaDe(relieve(altura, opciones.fuerza || 4), r),
+    roughnessMap: texturaDe(rugosidad, r),
+    roughness: 1, metalness: opciones.metal || 0,
+  }, opciones.extra || {}));
+}
+
+const T = 512;
+// --- Pared de azulejos de hospital, viejos y sucios ---
+function crearMatPared() {
+  const color = lienzo(T), alto = lienzo(T), rug = lienzo(T);
+  const gc = color.getContext('2d'), ga = alto.getContext('2d'), gr = rug.getContext('2d');
+  const AZ = 64, JUNTA = 3;
+  gc.fillStyle = '#4c534c'; gc.fillRect(0, 0, T, T);     // juntas
+  ga.fillStyle = '#000'; ga.fillRect(0, 0, T, T);
+  gr.fillStyle = '#e0e0e0'; gr.fillRect(0, 0, T, T);
+  for (let x = 0; x < T; x += AZ) for (let y = 0; y < T; y += AZ) {
+    const v = azar(-12, 12), roto = Math.random() < 0.04;
+    gc.fillStyle = roto ? '#5c584c' : `rgb(${150 + v},${166 + v},${152 + v})`;
+    gc.fillRect(x + JUNTA, y + JUNTA, AZ - JUNTA * 2, AZ - JUNTA * 2);
+    // relieve: el azulejo está más alto que la junta, con bordes redondeados
+    const grad = ga.createLinearGradient(x, y, x + AZ, y + AZ);
+    grad.addColorStop(0, '#d0d0d0'); grad.addColorStop(0.5, '#ffffff'); grad.addColorStop(1, '#c0c0c0');
+    ga.fillStyle = roto ? '#555' : grad;
+    ga.fillRect(x + JUNTA, y + JUNTA, AZ - JUNTA * 2, AZ - JUNTA * 2);
+    gr.fillStyle = roto ? '#d0d0d0' : `rgb(${70 + v},${70 + v},${70 + v})`;   // azulejo brillante
+    gr.fillRect(x + JUNTA, y + JUNTA, AZ - JUNTA * 2, AZ - JUNTA * 2);
+  }
+  // suciedad: abajo más sucio, regueros de humedad, manchas
+  const grad = gc.createLinearGradient(0, T * 0.55, 0, T);
+  grad.addColorStop(0, 'rgba(40,30,15,0)'); grad.addColorStop(1, 'rgba(40,30,15,0.65)');
+  gc.fillStyle = grad; gc.fillRect(0, 0, T, T);
+  regueros(gc, T, 40, '60,45,20', 0.35);
+  manchas(gc, T, 60, '50,40,25', 10, 60, 0.35);
+  manchas(gc, T, 6, '70,5,5', 8, 30, 0.5);
+  manchas(gr, T, 40, '235,235,235', 10, 60, 0.6);
+  return material(color, alto, rug, { fuerza: 3 });
+}
+// --- Suelo de baldosas gastadas, con charcos ---
+function crearMatSuelo(repetir) {
+  const color = lienzo(T), alto = lienzo(T), rug = lienzo(T);
+  const gc = color.getContext('2d'), ga = alto.getContext('2d'), gr = rug.getContext('2d');
+  const B = 128;
+  ga.fillStyle = '#000'; ga.fillRect(0, 0, T, T);
+  gr.fillStyle = '#d8d8d8'; gr.fillRect(0, 0, T, T);
+  for (let x = 0; x < T; x += B) for (let y = 0; y < T; y += B) {
+    const v = azar(-8, 8), oscura = ((x + y) / B) % 2;
+    gc.fillStyle = oscura ? `rgb(${78 + v},${80 + v},${76 + v})` : `rgb(${120 + v},${121 + v},${112 + v})`;
+    gc.fillRect(x, y, B, B);
+    ga.fillStyle = '#fff'; ga.fillRect(x + 2, y + 2, B - 4, B - 4);
+    gr.fillStyle = `rgb(${150 + v * 3},${150 + v * 3},${150 + v * 3})`; gr.fillRect(x + 2, y + 2, B - 4, B - 4);
+  }
+  // arañazos
+  gc.strokeStyle = 'rgba(200,200,190,0.12)'; gc.lineWidth = 1;
+  for (let i = 0; i < 120; i++) {
+    const x = Math.random() * T, y = Math.random() * T, a = Math.random() * 6, l = azar(10, 60);
+    gc.beginPath(); gc.moveTo(x, y); gc.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); gc.stroke();
+  }
+  manchas(gc, T, 80, '30,25,15', 15, 90, 0.4);
+  manchas(gc, T, 4, '60,0,0', 10, 40, 0.55);
+  // charcos: zonas muy lisas que reflejan la luz
+  manchas(gr, T, 10, '15,15,15', 30, 90, 0.9);
+  return material(color, alto, rug, { repetir, fuerza: 2 });
+}
+// --- Techo de placas, con manchas de humedad ---
+function crearMatTecho(repetir) {
+  const color = lienzo(256), alto = lienzo(256), rug = lienzo(256);
+  const gc = color.getContext('2d'), ga = alto.getContext('2d'), gr = rug.getContext('2d');
+  gc.fillStyle = '#8a8a82'; gc.fillRect(0, 0, 256, 256);
+  ga.fillStyle = '#fff'; ga.fillRect(0, 0, 256, 256);
+  gr.fillStyle = '#f0f0f0'; gr.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 1500; i++) { gc.fillStyle = `rgba(0,0,0,${Math.random() * 0.15})`; gc.fillRect(Math.random() * 256, Math.random() * 256, 2, 2); }
+  gc.fillStyle = '#55554f'; ga.fillStyle = '#000';
+  for (const p of [0, 128]) { gc.fillRect(p, 0, 5, 256); gc.fillRect(0, p, 256, 5); ga.fillRect(p, 0, 5, 256); ga.fillRect(0, p, 256, 5); }
+  manchas(gc, 256, 8, '110,85,30', 15, 60, 0.6);
+  return material(color, alto, rug, { repetir, fuerza: 3 });
+}
+// --- Metal pintado y oxidado (puertas) ---
+function crearMatMetal() {
+  const color = lienzo(T), alto = lienzo(T), rug = lienzo(T);
+  const gc = color.getContext('2d'), ga = alto.getContext('2d'), gr = rug.getContext('2d');
+  gc.fillStyle = '#5e646b'; gc.fillRect(0, 0, T, T);
+  ga.fillStyle = '#808080'; ga.fillRect(0, 0, T, T);
+  gr.fillStyle = '#707070'; gr.fillRect(0, 0, T, T);
+  for (let y = 0; y < T - 70; y += 36) {   // láminas horizontales
+    ga.fillStyle = '#ffffff'; ga.fillRect(0, y + 4, T, 26);
+    ga.fillStyle = '#000000'; ga.fillRect(0, y + 30, T, 6);
+    gc.fillStyle = 'rgba(0,0,0,0.35)'; gc.fillRect(0, y + 30, T, 6);
+  }
+  for (let x = 0; x < T; x += 64) {        // franja de peligro amarilla y negra
+    gc.fillStyle = (x / 64) % 2 ? '#151515' : '#b89412';
+    gc.beginPath(); gc.moveTo(x, T); gc.lineTo(x + 64, T); gc.lineTo(x + 104, T - 64); gc.lineTo(x + 40, T - 64); gc.fill();
+  }
+  manchas(gc, T, 70, '110,55,20', 6, 40, 0.75);     // óxido
+  manchas(gr, T, 70, '230,230,230', 6, 40, 0.8);
+  regueros(gc, T, 30, '100,50,15', 0.45);
+  return material(color, alto, rug, { fuerza: 5, metal: 0.55 });
+}
+// --- Madera del escritorio ---
+function crearMatMadera() {
+  const color = lienzo(256), alto = lienzo(256), rug = lienzo(256);
+  const gc = color.getContext('2d');
+  gc.fillStyle = '#4a3220'; gc.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 90; i++) { gc.strokeStyle = `rgba(${azar(20, 60)},${azar(10, 35)},5,0.35)`; gc.lineWidth = azar(1, 3); gc.beginPath(); const y = Math.random() * 256; gc.moveTo(0, y); gc.bezierCurveTo(80, y + azar(-8, 8), 170, y + azar(-8, 8), 256, y); gc.stroke(); }
+  alto.getContext('2d').drawImage(color, 0, 0);
+  const gr = rug.getContext('2d'); gr.fillStyle = '#909090'; gr.fillRect(0, 0, 256, 256);
+  return material(color, alto, rug, { fuerza: 1.5 });
+}
+// --- Tela (sábanas, muñeco) ---
+function crearMatTela(base, oscuro) {
+  const color = lienzo(256), alto = lienzo(256), rug = lienzo(256);
+  const gc = color.getContext('2d'), ga = alto.getContext('2d');
+  gc.fillStyle = base; gc.fillRect(0, 0, 256, 256);
+  ga.fillStyle = '#808080'; ga.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 256; i += 3) { ga.fillStyle = 'rgba(255,255,255,0.25)'; ga.fillRect(i, 0, 1, 256); ga.fillRect(0, i, 256, 1); }  // trama de la tela
+  manchas(gc, 256, 30, oscuro || '60,50,30', 8, 40, 0.3);
+  const gr = rug.getContext('2d'); gr.fillStyle = '#f2f2f2'; gr.fillRect(0, 0, 256, 256);
+  return material(color, alto, rug, { fuerza: 1.2 });
+}
+// --- Manchas de sangre (con transparencia) ---
+function crearMatSangre() {
+  const c = lienzo(256), g = c.getContext('2d');
+  for (let i = 0; i < 14; i++) {   // gotas y salpicaduras
+    const x = 128 + azar(-80, 80) * (i ? 1 : 0), y = 128 + azar(-80, 80) * (i ? 1 : 0), r = i ? azar(3, 14) : 60;
+    g.fillStyle = `rgba(${azar(70, 100) | 0},0,0,${azar(0.75, 0.95)})`;
+    g.beginPath();
+    for (let a = 0; a < Math.PI * 2; a += 0.3) { const rr = r * azar(0.75, 1.15); g.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); }
+    g.fill();
+  }
+  const t = texturaDe(c, null, true);
+  return new THREE.MeshStandardMaterial({ map: t, transparent: true, roughness: 0.25, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 });
+}
+
+const filas = MAPA.length, columnas = MAPA[0].length;
+const MAT = {
+  pared: crearMatPared(),
+  suelo: crearMatSuelo([columnas, filas]),
+  techo: crearMatTecho([columnas * 2, filas * 2]),
+  metal: crearMatMetal(),
+  madera: crearMatMadera(),
+  sabana: crearMatTela('#c9c6b8', '90,75,40'),
+  sangre: crearMatSangre(),
+  cromado: new THREE.MeshStandardMaterial({ color: 0x9a9a9a, metalness: 0.9, roughness: 0.35 }),
+  negro: new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.6 }),
+  plastico: new THREE.MeshStandardMaterial({ color: 0x2a2c30, roughness: 0.5 }),
+};
+
+// =====================================================
+//  AYUDANTES PARA CONSTRUIR
+// =====================================================
+function malla(geo, mat, x, y, z) { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); return m; }
+function caja(an, al, fo, mat, x, y, z) { return malla(new THREE.BoxGeometry(an, al, fo), mat, x, y, z); }
+function tubo(r, largo, mat, x, y, z) { return malla(new THREE.CylinderGeometry(r, r, largo, 10), mat, x, y, z); }
+function brilla(color, intensidad) {   // material que brilla en la oscuridad (ojos, pantallas, lámparas)
+  return new THREE.MeshStandardMaterial({ color: 0x000000, emissive: color, emissiveIntensity: intensidad, fog: false });
+}
+function centro(fila, col) { return { x: col * CELDA + CELDA / 2, z: fila * CELDA + CELDA / 2 }; }
+function celda(x, z) { return [Math.floor(z / CELDA), Math.floor(x / CELDA)]; }
+function esPared(fila, col) { return !MAPA[fila] || MAPA[fila][col] === undefined || MAPA[fila][col] === '#'; }
+function enSeguridad(f, c) { return f >= 10 && f <= 11 && c >= 11 && c <= 13; }
+
+// =====================================================
+//  CONSTRUIR EL HOSPITAL
+// =====================================================
+const geoPared = new THREE.BoxGeometry(CELDA, ALTO_PARED, CELDA);
+const suelo = malla(new THREE.PlaneGeometry(columnas * CELDA, filas * CELDA), MAT.suelo, columnas * CELDA / 2, 0, filas * CELDA / 2);
+suelo.rotation.x = -Math.PI / 2;
+escena.add(suelo);
+const techo = malla(new THREE.PlaneGeometry(columnas * CELDA, filas * CELDA), MAT.techo, columnas * CELDA / 2, ALTO_PARED, filas * CELDA / 2);
+techo.rotation.x = Math.PI / 2;
+escena.add(techo);
+
+// una mancha de sangre en el suelo o en la pared
+function sangre(x, y, z, tam, giroX, giroY) {
+  const m = malla(new THREE.PlaneGeometry(tam, tam), MAT.sangre, x, y, z);
+  m.rotation.set(giroX, giroY || 0, Math.random() * 6, 'YXZ');
+  m.userData.sinSombra = true;
+  escena.add(m);
+}
+
+// una camilla con alguien tapado con una sábana...
+function camilla(x, z, giro, tapada = true) {
+  const g = new THREE.Group();
+  for (const [lx, lz] of [[-0.9, -0.35], [0.9, -0.35], [-0.9, 0.35], [0.9, 0.35]]) {
+    g.add(tubo(0.025, 0.8, MAT.cromado, lx, 0.4, lz));
+    g.add(malla(new THREE.SphereGeometry(0.05, 8, 6), MAT.negro, lx, 0.05, lz));   // ruedas
+  }
+  g.add(caja(2.0, 0.06, 0.8, MAT.cromado, 0, 0.82, 0));
+  g.add(caja(1.95, 0.08, 0.75, MAT.plastico, 0, 0.89, 0));       // colchón
+  if (tapada) {
+    // la sábana tiene la forma de alguien tumbado debajo
+    const geo = new THREE.BoxGeometry(1.95, 0.3, 0.85, 40, 1, 12);
+    const pos = geo.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const vx = pos.getX(i), vz = pos.getZ(i);
+      if (pos.getY(i) > 0) {
+        const cuerpo = Math.exp(-((vz / 0.3) ** 2)) * (vx < -0.6 ? 0.22 * Math.exp(-(((vx + 0.8) / 0.15) ** 2)) + 0.05 : 0.12 + 0.05 * Math.sin(vx * 3)) ;
+        pos.setY(i, pos.getY(i) + cuerpo);
+      } else pos.setY(i, pos.getY(i) - 0.05);
+    }
+    geo.computeVertexNormals();
+    g.add(malla(geo, MAT.sabana, 0, 0.98, 0));
+    const m = malla(new THREE.PlaneGeometry(0.35, 0.35), MAT.sangre, 0.2, 1.2, 0.05);
+    m.rotation.x = -Math.PI / 2;
+    g.add(m);
+  }
+  g.position.set(x, 0, z);
+  g.rotation.y = giro;
+  escena.add(g);
+}
+function sillaDeRuedas(x, z, giro) {
+  const g = new THREE.Group();
+  g.add(caja(0.5, 0.05, 0.5, MAT.negro, 0, 0.5, 0));
+  g.add(caja(0.5, 0.5, 0.04, MAT.negro, 0, 0.78, -0.25));
+  for (const lado of [-1, 1]) {
+    const rueda = malla(new THREE.TorusGeometry(0.3, 0.025, 8, 24), MAT.cromado, lado * 0.3, 0.3, -0.05);
+    rueda.rotation.y = Math.PI / 2;
+    g.add(rueda);
+    g.add(tubo(0.015, 0.5, MAT.cromado, lado * 0.25, 0.75, -0.27));
+  }
+  const volcada = Math.random() < 0.35;   // a veces está tirada en el suelo
+  g.position.set(x, volcada ? 0.33 : 0, z);
+  g.rotation.set(0, giro, volcada ? 1.45 : 0);
+  escena.add(g);
+}
+function gotero(x, z) {
+  const g = new THREE.Group();
+  g.add(caja(0.45, 0.03, 0.45, MAT.cromado, 0, 0.03, 0));
+  g.add(tubo(0.015, 1.9, MAT.cromado, 0, 0.95, 0));
+  g.add(malla(new THREE.BoxGeometry(0.2, 0.3, 0.06), new THREE.MeshStandardMaterial({ color: 0xbfd8c8, roughness: 0.15, transparent: true, opacity: 0.7 }), 0.1, 1.7, 0));
+  g.position.set(x, 0, z);
+  escena.add(g);
+}
+function carrito(x, z, giro) {
+  const g = new THREE.Group();
+  g.add(caja(0.9, 0.04, 0.5, MAT.cromado, 0, 0.9, 0));
+  g.add(caja(0.9, 0.04, 0.5, MAT.cromado, 0, 0.4, 0));
+  for (const [a, b] of [[-0.42, -0.22], [0.42, -0.22], [-0.42, 0.22], [0.42, 0.22]]) g.add(tubo(0.015, 0.9, MAT.cromado, a, 0.45, b));
+  g.add(caja(0.2, 0.12, 0.14, new THREE.MeshStandardMaterial({ color: 0x2a5a8a, roughness: 0.4 }), -0.2, 0.98, 0));
+  g.add(tubo(0.04, 0.16, new THREE.MeshStandardMaterial({ color: 0xe8e8e8, roughness: 0.2 }), 0.2, 1.0, 0.05));
+  g.position.set(x, 0, z); g.rotation.y = giro;
+  escena.add(g);
+}
+// un cartel con el nombre de la sala, colgado de la pared
+function cartel(texto, x, z) {
+  const c = document.createElement('canvas');
+  c.width = 512; c.height = 128;
+  const g = c.getContext('2d');
+  g.fillStyle = '#1d3a2a'; g.fillRect(0, 0, 512, 128);
+  g.strokeStyle = '#c8d8c8'; g.lineWidth = 6; g.strokeRect(10, 10, 492, 108);
+  g.fillStyle = '#e0ead8'; g.font = 'bold 54px Arial'; g.textAlign = 'center';
+  g.fillText(texto, 256, 84);
+  manchas(g, 512, 20, '30,20,10', 10, 50, 0.5);
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: texturaDe(c, null, true) }));
+  s.scale.set(2.2, 0.55, 1);
+  s.position.set(x, 2.75, z);
+  escena.add(s);
+}
+
+// =====================================================
+//  MUCHA MÁS DECORACIÓN: el hospital está destrozado
+// =====================================================
+function sinSombra(obj) { obj.traverse(o => { o.userData.sinSombra = true; }); return obj; }
+const MAT2 = {
+  sillaAzul: new THREE.MeshStandardMaterial({ color: 0x2a4258, roughness: 0.55 }),
+  sillaNaranja: new THREE.MeshStandardMaterial({ color: 0x7a3a1a, roughness: 0.55 }),
+  carton: crearMatTela('#7a5a32', '40,25,10'),
+  cristal: new THREE.MeshStandardMaterial({ color: 0xaaccdd, roughness: 0.05, metalness: 0.2, transparent: true, opacity: 0.45, side: THREE.DoubleSide }),
+  frasco: new THREE.MeshStandardMaterial({ color: 0x6a3a10, roughness: 0.1, transparent: true, opacity: 0.8 }),
+  frascoBlanco: new THREE.MeshStandardMaterial({ color: 0xe8e8e0, roughness: 0.4 }),
+  placa: new THREE.MeshStandardMaterial({ color: 0x77776f, roughness: 0.95 }),
+  cortina: new THREE.MeshStandardMaterial({ color: 0x7f9c8c, roughness: 0.9, side: THREE.DoubleSide }),
+  colchon: crearMatTela('#9aa0a8', '50,40,30'),
+};
+// huella de una mano ensangrentada
+MAT2.mano = (() => {
+  const c = lienzo(128), g = c.getContext('2d');
+  g.fillStyle = 'rgba(95,0,0,0.9)';
+  g.beginPath(); g.ellipse(64, 80, 26, 30, 0, 0, Math.PI * 2); g.fill();              // palma
+  for (const [x, y, a] of [[38, 40, -0.4], [52, 28, -0.15], [66, 26, 0], [80, 30, 0.15], [96, 62, 0.9]]) {
+    g.save(); g.translate(x, y); g.rotate(a); g.beginPath(); g.ellipse(0, 0, 6, 17, 0, 0, Math.PI * 2); g.fill(); g.restore();   // dedos
+  }
+  regueros(g, 128, 6, '95,0,0', 0.8);
+  return new THREE.MeshStandardMaterial({ map: texturaDe(c, null, true), transparent: true, roughness: 0.3, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 });
+})();
+// rastro de sangre, como si hubieran arrastrado algo…
+MAT2.arrastre = (() => {
+  const c = lienzo(256), g = c.getContext('2d');
+  for (let i = 0; i < 26; i++) {
+    const x = 70 + azar(0, 116), ancho = azar(3, 14);
+    const grad = g.createLinearGradient(0, 0, 0, 256);
+    grad.addColorStop(0, 'rgba(90,0,0,0.9)'); grad.addColorStop(0.7, 'rgba(80,0,0,0.6)'); grad.addColorStop(1, 'rgba(70,0,0,0)');
+    g.fillStyle = grad; g.fillRect(x, azar(0, 30), ancho, azar(150, 256));
+  }
+  return new THREE.MeshStandardMaterial({ map: texturaDe(c, null, true), transparent: true, roughness: 0.2, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 });
+})();
+const GEO = {
+  papel: new THREE.BoxGeometry(0.21, 0.003, 0.29),
+  cristal: new THREE.CircleGeometry(0.07, 3),
+  frasco: new THREE.CylinderGeometry(0.035, 0.035, 0.14, 10),
+  pataSilla: new THREE.CylinderGeometry(0.012, 0.012, 0.45, 6),
+  pataMesa: new THREE.CylinderGeometry(0.02, 0.02, 0.73, 6),
+};
+
+function silla(x, z, giro, tirada) {
+  const g = new THREE.Group();
+  const mat = Math.random() < 0.5 ? MAT2.sillaAzul : MAT2.sillaNaranja;
+  g.add(caja(0.45, 0.04, 0.45, mat, 0, 0.45, 0));
+  g.add(caja(0.45, 0.4, 0.04, mat, 0, 0.72, -0.21));
+  for (const [a, b] of [[-0.2, -0.2], [0.2, -0.2], [-0.2, 0.2], [0.2, 0.2]]) g.add(malla(GEO.pataSilla, MAT.cromado, a, 0.225, b));
+  g.rotation.y = giro;
+  if (tirada) {
+    if (Math.random() < 0.5) { g.rotation.z = Math.PI / 2; g.position.y = 0.22; }        // tumbada de lado
+    else { g.rotation.x = -Math.PI / 2 + 0.15; g.position.y = 0.24; }                    // caída de espaldas
+  }
+  g.position.x = x; g.position.z = z;
+  escena.add(g);
+}
+function mesa(x, z, giro, volcada) {
+  const g = new THREE.Group();
+  g.add(caja(1.2, 0.04, 0.7, MAT.madera, 0, 0.75, 0));
+  for (const [a, b] of [[-0.55, -0.3], [0.55, -0.3], [-0.55, 0.3], [0.55, 0.3]]) g.add(malla(GEO.pataMesa, MAT.cromado, a, 0.365, b));
+  g.rotation.y = giro;
+  if (volcada) {
+    if (Math.random() < 0.5) { g.rotation.z = Math.PI / 2; g.position.y = 0.35; }       // de lado
+    else { g.rotation.x = Math.PI; g.position.y = 0.77; }                                 // patas arriba
+  }
+  g.position.x = x; g.position.z = z;
+  escena.add(g);
+}
+function cajasCarton(x, z, giro) {
+  const n = Math.floor(azar(1, 4));
+  for (let i = 0; i < n; i++) {
+    const t = azar(0.35, 0.6);
+    const b = caja(t, t * 0.8, t, MAT2.carton, x + azar(-0.3, 0.3), t * 0.4 + (i === 2 ? t * 0.8 : 0), z + azar(-0.3, 0.3));
+    b.rotation.y = giro + azar(-0.5, 0.5);
+    if (Math.random() < 0.25) { b.rotation.z = Math.PI / 2; }
+    escena.add(b);
+  }
+}
+function monPapeles(x, z) {
+  const g = new THREE.Group();
+  const n = Math.floor(azar(6, 16));
+  for (let i = 0; i < n; i++) {
+    const papel = malla(GEO.papel, MAT.sabana, x + azar(-0.9, 0.9), 0.003 + i * 0.001, z + azar(-0.9, 0.9));
+    papel.rotation.set(azar(-0.05, 0.05), Math.random() * 6, azar(-0.05, 0.05));
+    g.add(papel);
+  }
+  escena.add(sinSombra(g));
+}
+function cristales(x, z) {
+  const g = new THREE.Group();
+  for (let i = 0; i < 10; i++) {
+    const t = malla(GEO.cristal, MAT2.cristal, x + azar(-0.6, 0.6), 0.004, z + azar(-0.6, 0.6));
+    t.rotation.set(-Math.PI / 2, 0, Math.random() * 6);
+    t.scale.setScalar(azar(0.4, 1.4));
+    g.add(t);
+  }
+  escena.add(sinSombra(g));
+}
+function frascos(x, z) {
+  const g = new THREE.Group();
+  for (let i = 0; i < Math.floor(azar(3, 7)); i++) {
+    const f = malla(GEO.frasco, Math.random() < 0.5 ? MAT2.frasco : MAT2.frascoBlanco, x + azar(-0.5, 0.5), 0.035, z + azar(-0.5, 0.5));
+    f.rotation.set(Math.PI / 2, 0, Math.random() * 6);   // tirados por el suelo
+    g.add(f);
+  }
+  escena.add(sinSombra(g));
+}
+function armarioVolcado(x, z, giro) {
+  const g = new THREE.Group();
+  g.add(caja(0.8, 1.7, 0.45, MAT.metal, 0, 0, 0));
+  g.rotation.set(0, giro, Math.PI / 2);
+  g.position.set(x, 0.225, z);
+  escena.add(g);
+  frascos(x + Math.cos(giro) * 0.8, z + Math.sin(giro) * 0.8);
+}
+function camaHospital(x, z, giro) {
+  const g = new THREE.Group();
+  g.add(caja(2.0, 0.1, 0.95, MAT.cromado, 0, 0.55, 0));
+  g.add(caja(1.95, 0.16, 0.9, MAT2.colchon, 0, 0.68, 0));
+  g.add(caja(0.06, 0.75, 0.95, MAT.cromado, -1.0, 0.75, 0));         // cabecero
+  g.add(caja(0.06, 0.45, 0.95, MAT.cromado, 1.0, 0.6, 0));
+  g.add(caja(1.2, 0.04, 0.03, MAT.cromado, 0, 0.95, 0.47));          // barandilla
+  g.add(caja(0.45, 0.12, 0.6, MAT.sabana, -0.7, 0.8, 0));            // almohada
+  for (const [a, b] of [[-0.9, -0.4], [0.9, -0.4], [-0.9, 0.4], [0.9, 0.4]]) g.add(malla(GEO.pataMesa, MAT.cromado, a, 0.25, b));
+  const m = malla(new THREE.PlaneGeometry(0.6, 0.6), MAT.sangre, azar(-0.4, 0.5), 0.77, 0);
+  m.rotation.x = -Math.PI / 2; m.userData.sinSombra = true;
+  g.add(m);
+  g.position.set(x, 0, z); g.rotation.y = giro;
+  if (Math.random() < 0.3) { g.rotation.z = 0.25; }                  // con una pata rota
+  escena.add(g);
+}
+// una placa del techo colgando, con cables
+function techoRoto(x, z) {
+  const placa = caja(0.6, 0.02, 0.6, MAT2.placa, x, ALTO_PARED - 0.32, z);
+  placa.rotation.set(azar(0.7, 1.1), Math.random() * 6, 0);
+  escena.add(placa);
+  escena.add(caja(0.6, 0.02, 0.6, MAT2.placa, x + azar(-0.6, 0.6), 0.01, z + azar(-0.6, 0.6)));   // otra en el suelo
+  for (let i = 0; i < 3; i++) {
+    const largo = azar(0.5, 1.3);
+    const cable = tubo(0.008, largo, MAT.negro, x + azar(-0.3, 0.3), ALTO_PARED - largo / 2, z + azar(-0.3, 0.3));
+    cable.rotation.z = azar(-0.2, 0.2);
+    escena.add(sinSombra(cable));
+  }
+  const hueco = caja(0.6, 0.01, 0.6, new THREE.MeshBasicMaterial({ color: 0x000000 }), x, ALTO_PARED - 0.005, z);
+  escena.add(hueco);
+}
+// cortina de hospital, rota y sucia
+function cortina(x, z, giro) {
+  const g = new THREE.Group();
+  g.add(caja(1.8, 0.03, 0.03, MAT.cromado, 0, 2.75, 0));
+  const geo = new THREE.PlaneGeometry(1.7, 2.2, 24, 1);
+  const pos = geo.attributes.position;
+  for (let i = 0; i < pos.count; i++) pos.setZ(i, Math.sin(pos.getX(i) * 9) * 0.06);   // pliegues
+  geo.computeVertexNormals();
+  const tela = malla(geo, MAT2.cortina, 0, 1.6, 0);
+  tela.rotation.z = azar(-0.06, 0.06);
+  g.add(tela);
+  const m = malla(new THREE.PlaneGeometry(0.5, 0.5), MAT.sangre, azar(-0.5, 0.5), azar(1, 2), 0.04);
+  m.userData.sinSombra = true;
+  g.add(m);
+  g.position.set(x, 0, z); g.rotation.y = giro;
+  escena.add(g);
+}
+function rastroSangre(x, z, giro, largo) {
+  const m = malla(new THREE.PlaneGeometry(0.6, largo), MAT2.arrastre, x, 0.006, z);
+  m.rotation.set(-Math.PI / 2, 0, giro);
+  m.userData.sinSombra = true;
+  escena.add(m);
+}
+function huellaMano(x, y, z, giroY) {
+  const m = malla(new THREE.PlaneGeometry(0.28, 0.28), MAT2.mano, x, y, z);
+  m.rotation.set(0, giroY, azar(-0.5, 0.5));
+  m.userData.sinSombra = true;
+  escena.add(m);
+}
+
+// llena una casilla del mapa de cosas tiradas y sangre
+function decorarCelda(f, c, p) {
+  const n = Math.floor(azar(2, 6));
+  for (let i = 0; i < n; i++) {
+    const r = Math.random(), x = p.x + azar(-1.5, 1.5), z = p.z + azar(-1.5, 1.5), giro = Math.random() * 6;
+    if (r < 0.22) silla(x, z, giro, Math.random() < 0.75);
+    else if (r < 0.34) monPapeles(x, z);
+    else if (r < 0.42) cajasCarton(x, z, giro);
+    else if (r < 0.48) mesa(x, z, giro, Math.random() < 0.7);
+    else if (r < 0.54) cristales(x, z);
+    else if (r < 0.59) frascos(x, z);
+    else if (r < 0.63) sillaDeRuedas(x, z, giro);
+    else if (r < 0.66) gotero(x, z);
+    else if (r < 0.69) carrito(x, z, giro);
+    else if (r < 0.71) armarioVolcado(x, z, giro);
+    else if (r < 0.74) camaHospital(x, z, giro);
+  }
+  // sangre en el suelo
+  if (Math.random() < 0.5) sangre(p.x + azar(-1.4, 1.4), 0.005, p.z + azar(-1.4, 1.4), azar(0.8, 2.2), -Math.PI / 2);
+  if (Math.random() < 0.3) sangre(p.x + azar(-1.4, 1.4), 0.005, p.z + azar(-1.4, 1.4), azar(0.3, 0.8), -Math.PI / 2);
+  if (Math.random() < 0.15) rastroSangre(p.x, p.z, Math.random() * 6, azar(2, 4));
+  // techo roto
+  if (Math.random() < 0.12) techoRoto(p.x + azar(-1, 1), p.z + azar(-1, 1));
+  // paredes: sangre, huellas de manos y cortinas
+  for (const [df, dc] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+    if (!esPared(f + df, c + dc)) continue;
+    const wx = p.x + dc * (CELDA / 2 - 0.01), wz = p.z + df * (CELDA / 2 - 0.01);
+    const giroPared = dc ? -dc * Math.PI / 2 : (df > 0 ? Math.PI : 0);
+    const a = azar(-1.5, 1.5);
+    if (Math.random() < 0.22) sangre(wx + (df ? a : 0), azar(0.3, 2.3), wz + (dc ? a : 0), azar(0.5, 1.4), 0, giroPared);
+    if (Math.random() < 0.08) for (let k = 0; k < Math.floor(azar(1, 4)); k++) huellaMano(wx + (df ? a + k * 0.3 : 0), azar(0.8, 1.6), wz + (dc ? a + k * 0.3 : 0), giroPared);
+    if (Math.random() < 0.06) cortina(p.x + dc * (CELDA / 2 - 0.5), p.z + df * (CELDA / 2 - 0.5), dc ? Math.PI / 2 : 0);
+  }
+}
+
+// fluorescentes del techo (parpadean)
+const luces = [];
+function fluorescente(x, z, color, intensidad) {
+  const tuboMat = brilla(color, 2.5);
+  escena.add(caja(1.3, 0.06, 0.3, MAT.plastico, x, ALTO_PARED - 0.03, z));
+  escena.add(caja(1.2, 0.04, 0.12, tuboMat, x, ALTO_PARED - 0.07, z));
+  const luz = new THREE.PointLight(color, intensidad, 12, 2);
+  luz.position.set(x, ALTO_PARED - 0.3, z);
+  escena.add(luz);
+  luces.push({ luz, tuboMat, normal: intensidad, roto: Math.random() < 0.5 });
+}
+
+// ====== LAS PUERTAS DE METAL ======
+const puertas = [];
+function crearPuerta(fila, col, letra) {
+  const p = centro(fila, col);
+  const hoja = caja(0.2, ALTO_PARED, CELDA, MAT.metal, p.x, ALTO_PARED * 1.5, p.z);
+  hoja.userData.mueve = true;
+  escena.add(hoja);
+  // marco de la puerta
+  for (const dz of [-1, 1]) escena.add(caja(0.35, ALTO_PARED, 0.15, MAT.plastico, p.x, ALTO_PARED / 2, p.z + dz * (CELDA / 2 - 0.07)));
+  // el botón rojo, en la pared de dentro de la sala, al lado de la puerta
+  const lado = letra === 'I' ? 1 : -1;
+  const bx = p.x + lado * (CELDA / 2 + 0.04), bz = p.z + 2.8;
+  escena.add(caja(0.05, 0.45, 0.35, MAT.plastico, bx, 1.35, bz));
+  const luzBoton = brilla(0xff1010, 0.6);
+  const boton = malla(new THREE.CylinderGeometry(0.09, 0.09, 0.08, 16), luzBoton, bx + lado * 0.04, 1.35, bz);
+  boton.rotation.z = Math.PI / 2;
+  escena.add(boton);
+  puertas.push({ fila, col, hoja, luzBoton, boton: new THREE.Vector3(bx, 1.35, bz), cerrada: false, bajada: 0 });
+}
+function puertaEn(fila, col) { return puertas.find(p => p.fila === fila && p.col === col); }
+// ¿no se puede pasar por esta casilla? (pared o puerta cerrada)
+function bloqueado(fila, col) {
+  if (esPared(fila, col)) return true;
+  const p = puertaEn(fila, col);
+  return !!(p && p.bajada > 0.5);
+}
+
+// ====== LA SALA DE SEGURIDAD (donde empiezas) ======
+// pantallas con interferencias, como las cámaras de seguridad
+const pantallas = [];
+let luzEscritorio = null;
+function salaSeguridad(x, z) {
+  const g = new THREE.Group();
+  // escritorio de madera
+  g.add(caja(3.0, 0.07, 1.0, MAT.madera, 0, 0.9, 0));
+  g.add(caja(0.08, 0.86, 0.95, MAT.madera, -1.45, 0.43, 0));
+  g.add(caja(0.08, 0.86, 0.95, MAT.madera, 1.45, 0.43, 0));
+  g.add(caja(2.9, 0.6, 0.05, MAT.madera, 0, 0.55, 0.45));
+  // tres monitores antiguos de cámaras (miran hacia ti)
+  for (const mx of [-0.95, 0, 0.95]) {
+    g.add(caja(0.8, 0.62, 0.55, MAT.plastico, mx, 1.25, 0.15));
+    const c = document.createElement('canvas');
+    c.width = 128; c.height = 96;
+    const t = texturaDe(c, null, true);
+    const mat = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: 1.1, roughness: 0.1 });
+    const pantalla = malla(new THREE.PlaneGeometry(0.66, 0.5), mat, mx, 1.25, -0.13);
+    pantalla.userData.mueve = true;   // no la juntamos con lo demás: cambia de imagen
+    pantalla.rotation.y = Math.PI;
+    g.add(pantalla);
+    pantallas.push({ c, t, mat, malla: pantalla, video: new THREE.WebGLRenderTarget(256, 192) });
+  }
+  // teclado, taza, papeles y una lamparita
+  g.add(caja(0.55, 0.03, 0.18, MAT.plastico, 0, 0.95, -0.32));
+  g.add(tubo(0.05, 0.11, new THREE.MeshStandardMaterial({ color: 0xe8e2d0, roughness: 0.3 }), 1.1, 0.99, -0.3));
+  g.add(caja(0.3, 0.01, 0.4, MAT.sabana, -1.1, 0.94, -0.2));
+  g.add(tubo(0.02, 0.4, MAT.negro, 1.25, 1.13, 0.2));
+  g.add(malla(new THREE.ConeGeometry(0.13, 0.18, 12, 1, true), MAT.negro, 1.25, 1.36, 0.1));
+  luzEscritorio = new THREE.PointLight(0xffb060, 0.9, 6, 2);
+  luzEscritorio.position.set(1.25, 1.25, 0.05);
+  g.add(luzEscritorio);
+  // silla de oficina
+  g.add(caja(0.55, 0.08, 0.55, MAT.negro, 0, 0.55, -1.0));
+  g.add(caja(0.55, 0.65, 0.08, MAT.negro, 0, 0.95, -1.3));
+  g.add(tubo(0.04, 0.45, MAT.cromado, 0, 0.27, -1.0));
+  // armario archivador y un póster viejo
+  g.add(caja(0.6, 1.4, 0.55, MAT.metal, -1.8, 0.7, 0.9));
+  g.position.set(x, 0, z);
+  escena.add(g);
+}
+
+const monstruos = [];
+let inicio = { x: 0, z: 0 };
+
+for (let f = 0; f < filas; f++) {
+  for (let c = 0; c < columnas; c++) {
+    const letra = MAPA[f][c];
+    const p = centro(f, c);
+    if (letra === '#') {
+      escena.add(malla(geoPared, MAT.pared, p.x, ALTO_PARED / 2, p.z));
+      continue;
+    }
+    if (letra === 'c') camilla(p.x, p.z, Math.random() * 3);
+    if (letra === 'I' || letra === 'D') crearPuerta(f, c, letra);
+    if (letra === 'S') {
+      // empiezas sentado en la sala de seguridad, mirando los monitores
+      inicio = { x: p.x, z: p.z - 0.6 };
+      salaSeguridad(p.x, p.z + 1.2);
+      fluorescente(p.x, p.z - 2, 0xdfffee, 0.55);
+      // un poco de desorden en tu sala
+      monPapeles(p.x - 4, p.z - 2.5);
+      silla(p.x + 4.3, p.z - 3, 1.2, true);
+      sangre(p.x - 3.5, 0.005, p.z - 3.2, 1.2, -Math.PI / 2);
+      huellaMano(p.x - 5.97, 1.3, p.z + 0.8, Math.PI / 2);
+    }
+    // ¡el caos! sillas, papeles, sangre… en todas partes menos en tu sala
+    if (!enSeguridad(f, c) && letra !== 'I' && letra !== 'D') decorarCelda(f, c, p);
+    if (CARTELES[letra]) {
+      cartel(CARTELES[letra], p.x, p.z);
+      fluorescente(p.x, p.z, letra === 'Q' ? 0xd8fff0 : 0xffd8c0, 0.9);
+    }
+    if (MONSTRUOS_INFO[letra]) {
+      const info = MONSTRUOS_INFO[letra];
+      const cuerpo = crearMonstruo(info.id);
+      cuerpo.grupo.scale.setScalar(info.tamano);
+      cuerpo.grupo.userData.mueve = true;
+      escena.add(cuerpo.grupo);
+      monstruos.push({ info, ...cuerpo, casa: p, x: p.x, z: p.z, velocidad: info.velocidad, hora: info.hora, despierto: false, camino: [], objetivo: null, tCamino: 0, fase: 0 });
+    }
+  }
+}
+// algunas luces en el pasillo largo
+for (const c of [3, 9, 15, 21]) fluorescente(centro(6, c).x, centro(6, c).z + 2, 0xe8f0ff, 0.7);
+
+// =====================================================
+//  LOS MONSTRUOS (cuerpos con forma de persona, que se mueven al andar)
+// =====================================================
+function piel(color) { return new THREE.MeshStandardMaterial({ color, roughness: 0.75 }); }
+// crea un cuerpo con piernas y brazos que se pueden mover
+function cuerpoBase(m) {
+  const g = new THREE.Group();
+  const pierna = x => {
+    const p = new THREE.Group(); p.position.set(x, 0.95, 0);
+    p.add(malla(new THREE.CylinderGeometry(0.085, 0.065, 0.9, 12), m.piernas, 0, -0.45, 0));
+    p.add(caja(0.13, 0.08, 0.27, m.zapatos || MAT.negro, 0, -0.9, 0.05));
+    g.add(p); return p;
+  };
+  const brazo = (x, largo) => {
+    const b = new THREE.Group(); b.position.set(x, 1.62, 0);
+    b.add(malla(new THREE.CylinderGeometry(0.06, 0.05, largo, 12), m.brazos, 0, -largo / 2, 0));
+    b.add(malla(new THREE.SphereGeometry(0.06, 12, 10), m.manos, 0, -largo - 0.02, 0));
+    g.add(b); return b;
+  };
+  const piernaI = pierna(-0.11), piernaD = pierna(0.11);
+  const largo = m.brazoLargo || 0.68;
+  const brazoI = brazo(-0.29, largo), brazoD = brazo(0.29, largo);
+  const torso = malla(new THREE.CylinderGeometry(0.21, 0.17, 0.72, 16), m.torso, 0, 1.3, 0);
+  torso.scale.z = 0.7;
+  g.add(torso);
+  g.add(malla(new THREE.CylinderGeometry(0.06, 0.07, 0.12, 10), m.cuello || m.manos, 0, 1.71, 0));
+  const cabeza = new THREE.Group(); cabeza.position.set(0, 1.88, 0);
+  const craneo = malla(new THREE.SphereGeometry(m.cabezaTam || 0.14, 24, 18), m.cabeza, 0, 0, 0);
+  craneo.scale.set(1, 1.18, 1.05);
+  cabeza.add(craneo);
+  g.add(cabeza);
+  return { grupo: g, piernaI, piernaD, brazoI, brazoD, cabeza };
+}
+function ojos(cabeza, color, sep, alto, delante, r, intensidad) {
+  for (const s of [-1, 1]) cabeza.add(malla(new THREE.SphereGeometry(r, 10, 8), brilla(color, intensidad), s * sep, alto, delante));
+}
+// textura de bata con manchas de sangre
+function matBata(base) {
+  const c = lienzo(256), g = c.getContext('2d');
+  g.fillStyle = base; g.fillRect(0, 0, 256, 256);
+  manchas(g, 256, 25, '90,80,60', 5, 30, 0.3);
+  manchas(g, 256, 9, '100,0,0', 6, 26, 0.9);
+  regueros(g, 256, 10, '90,0,0', 0.7);
+  return new THREE.MeshStandardMaterial({ map: texturaDe(c, null, true), roughness: 0.85, side: THREE.DoubleSide });
+}
+
+function crearMonstruo(id) {
+  let c;
+  if (id === 'doctora') {
+    const pielM = piel(0xcdb9a4);
+    c = cuerpoBase({ piernas: piel(0x1a1a1e), brazos: matBata('#d6d6d0'), manos: piel(0xbac8c0), torso: matBata('#d6d6d0'), cabeza: pielM, cuello: pielM });
+    // bata larga abierta
+    c.grupo.add(malla(new THREE.CylinderGeometry(0.24, 0.36, 1.05, 18, 1, true), matBata('#d6d6d0'), 0, 1.12, 0));
+    // pelo largo y alborotado
+    const pelo = piel(0x15110e);
+    const melena = malla(new THREE.SphereGeometry(0.16, 16, 12), pelo, 0, 0.04, -0.03);
+    melena.scale.set(1.08, 1.2, 1.1);
+    c.cabeza.add(melena);
+    for (let i = 0; i < 10; i++) {
+      const mecha = caja(0.03, azar(0.25, 0.5), 0.02, pelo, azar(-0.15, 0.15), -0.15, azar(-0.12, -0.02));
+      mecha.rotation.z = azar(-0.4, 0.4);
+      c.cabeza.add(mecha);
+    }
+    ojos(c.cabeza, 0xff1a1a, 0.05, 0.02, 0.13, 0.03, 9);
+    const boca = malla(new THREE.TorusGeometry(0.055, 0.008, 6, 16, Math.PI), brilla(0x200000, 1), 0, -0.07, 0.135);
+    boca.rotation.z = Math.PI;
+    c.cabeza.add(boca);
+    // jeringa en la mano derecha
+    const jeringa = new THREE.Group();
+    jeringa.add(tubo(0.025, 0.22, new THREE.MeshStandardMaterial({ color: 0xc8e0ff, roughness: 0.1, transparent: true, opacity: 0.6 }), 0, 0, 0));
+    jeringa.add(tubo(0.004, 0.14, MAT.cromado, 0, -0.18, 0));
+    jeringa.position.set(0, -0.78, 0.05);
+    c.brazoD.add(jeringa);
+    c.brazoFijo = -2.3;   // la doctora lleva el brazo levantado con la jeringa
+  }
+  else if (id === 'robot') {
+    const metal = new THREE.MeshStandardMaterial({ color: 0x77706a, metalness: 0.85, roughness: 0.45, map: MAT.metal.map });
+    c = cuerpoBase({ piernas: metal, brazos: metal, manos: metal, torso: metal, cabeza: metal, cabezaTam: 0.17 });
+    c.grupo.add(caja(0.5, 0.5, 0.36, metal, 0, 1.32, 0));
+    c.cabeza.add(caja(0.26, 0.06, 0.05, brilla(0xffc020, 4), 0, 0.03, 0.16));   // visor amarillo
+    c.cabeza.add(tubo(0.008, 0.25, MAT.cromado, 0.08, 0.28, 0));
+    c.cabeza.add(malla(new THREE.SphereGeometry(0.025, 8, 6), brilla(0xff2020, 5), 0.08, 0.41, 0));
+  }
+  else if (id === 'muneco') {
+    const trapo = crearMatTela('#d8c2a0', '80,60,30');
+    c = cuerpoBase({ piernas: trapo, brazos: trapo, manos: trapo, torso: crearMatTela('#6e3555', '30,10,20'), cabeza: trapo, cabezaTam: 0.24, brazoLargo: 0.6 });
+    c.grupo.add(malla(new THREE.CylinderGeometry(0.2, 0.42, 0.7, 16, 1, true), crearMatTela('#6e3555', '30,10,20'), 0, 1.15, 0));
+    // pelo de lana
+    const lana = piel(0x6a1a18);
+    for (let i = 0; i < 18; i++) {
+      const a = azar(-1.6, 1.6);
+      const mecha = tubo(0.018, azar(0.3, 0.5), lana, Math.sin(a) * 0.24, -0.05, Math.cos(a) * 0.05 - 0.12);
+      mecha.rotation.x = 0.2;
+      c.cabeza.add(mecha);
+    }
+    // un ojo de botón… y el otro cosido con una X
+    const boton = malla(new THREE.CylinderGeometry(0.045, 0.045, 0.02, 16), new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.15 }), -0.08, 0.04, 0.25);
+    boton.rotation.x = Math.PI / 2;
+    c.cabeza.add(boton);
+    c.cabeza.add(malla(new THREE.SphereGeometry(0.01, 6, 6), brilla(0xff2020, 6), -0.08, 0.04, 0.265));
+    for (const giro of [0.8, -0.8]) { const x = caja(0.1, 0.012, 0.01, MAT.negro, 0.09, 0.04, 0.245); x.rotation.z = giro; c.cabeza.add(x); }
+    c.cabeza.add(caja(0.16, 0.01, 0.01, piel(0x400a0a), 0, -0.1, 0.24));
+  }
+  else if (id === 'silueta') {
+    const sombra = new THREE.MeshStandardMaterial({ color: 0x030303, roughness: 0.45 });
+    c = cuerpoBase({ piernas: sombra, brazos: sombra, manos: sombra, torso: sombra, cabeza: sombra, zapatos: sombra, brazoLargo: 1.0 });
+    c.grupo.add(malla(new THREE.CylinderGeometry(0.24, 0.4, 1.1, 18, 1, true), new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.45, side: THREE.DoubleSide }), 0, 1.1, 0));
+    ojos(c.cabeza, 0xffffff, 0.045, 0.02, 0.13, 0.016, 8);
+  }
+  return c;
+}
+// que las piernas y los brazos se muevan al andar
+function animarCuerpo(m, velocidad, dt) {
+  m.fase += velocidad * dt * 2.2;
+  const paso = Math.sin(m.fase) * Math.min(1, velocidad) * 0.55;
+  m.piernaI.rotation.x = paso;
+  m.piernaD.rotation.x = -paso;
+  m.brazoI.rotation.x = -paso * 0.8;
+  m.brazoD.rotation.x = m.brazoFijo !== undefined ? m.brazoFijo + Math.sin(m.fase * 0.5) * 0.1 : paso * 0.8;
+  m.cabeza.rotation.z = Math.sin(m.fase * 0.37) * 0.12;   // la cabeza se ladea, da mal rollo
+}
+
+// todo hace y recibe sombras
+escena.traverse(o => { if (o.isMesh) { o.castShadow = ALTA && !o.userData.sinSombra; o.receiveShadow = ALTA; } });
+
+// ====== TRUCO PARA QUE VAYA RÁPIDO ======
+// Hay miles de objetos. Los que no se mueven los "pegamos" en grupos grandes
+// (por zonas del mapa y por material), así el ordenador dibuja muchos menos.
+function unirMallas() {
+  if (!THREE.BufferGeometryUtils) return;
+  escena.updateMatrixWorld(true);
+  const grupos = new Map(), quitar = [], v = new THREE.Vector3();
+  escena.traverse(o => {
+    if (!o.isMesh) return;
+    for (let a = o; a; a = a.parent) if (a.userData.mueve) return;   // lo que se mueve no se toca
+    o.getWorldPosition(v);
+    const [f, c] = celda(v.x, v.z);
+    const clave = o.material.uuid + '|' + Math.floor(f / 3) + '_' + Math.floor(c / 3) + '|' + o.castShadow;
+    if (!grupos.has(clave)) grupos.set(clave, { mat: o.material, sombra: o.castShadow, geos: [] });
+    const geo = o.geometry.index ? o.geometry.clone() : o.geometry.clone();
+    geo.applyMatrix4(o.matrixWorld);
+    for (const nombre of Object.keys(geo.attributes)) if (!['position', 'normal', 'uv'].includes(nombre)) geo.deleteAttribute(nombre);
+    geo.clearGroups();
+    grupos.get(clave).geos.push(geo);
+    quitar.push(o);
+  });
+  quitar.forEach(o => o.parent.remove(o));
+  for (const g of grupos.values()) {
+    const unida = THREE.BufferGeometryUtils.mergeBufferGeometries(g.geos);
+    if (!unida) continue;
+    const m = new THREE.Mesh(unida, g.mat);
+    m.castShadow = g.sombra; m.receiveShadow = ALTA;
+    escena.add(m);
+  }
+}
+
+// polvo flotando en el aire
+const POLVO = 600;
+const posPolvo = new Float32Array(POLVO * 3);
+for (let i = 0; i < POLVO * 3; i++) posPolvo[i] = (Math.random() - 0.5) * 14;
+const geoPolvo = new THREE.BufferGeometry();
+geoPolvo.setAttribute('position', new THREE.BufferAttribute(posPolvo, 3));
+const polvo = new THREE.Points(geoPolvo, new THREE.PointsMaterial({ color: 0xbbb8a0, size: 0.025, transparent: true, opacity: 0.5, depthWrite: false }));
+escena.add(polvo);
+
+// =====================================================
+//  EFECTOS DE CINE: brillo, grano, viñeta y colores de película de miedo
+// =====================================================
+let composer = null, efectoCine = null, pasoRender = null;
+if (ALTA && THREE.EffectComposer && THREE.UnrealBloomPass) {
+  const destino = new THREE.WebGLRenderTarget(innerWidth, innerHeight, { type: THREE.HalfFloatType });
+  composer = new THREE.EffectComposer(renderer, destino);
+  pasoRender = new THREE.RenderPass(escena, camara);
+  composer.addPass(pasoRender);
+  composer.addPass(new THREE.UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.6, 0.45, 0.92));
+  efectoCine = new THREE.ShaderPass({
+    uniforms: { tDiffuse: { value: null }, tiempo: { value: 0 }, susto: { value: 0 }, exposicion: { value: 1.1 }, modoCamara: { value: 0 }, estatica: { value: 0 } },
+    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: `
+      uniform sampler2D tDiffuse; uniform float tiempo, susto, exposicion, modoCamara, estatica; varying vec2 vUv;
+      float azar(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+      void main() {
+        if (modoCamara > 0.5) {
+          // ===== MODO CÁMARA DE SEGURIDAD =====
+          vec2 d = vUv - 0.5;
+          vec2 uv = 0.5 + d * (1.0 - 0.12 * dot(d, d));               // lente un poco curvada (ojo de pez)
+          float banda = step(0.985, azar(vec2(floor(uv.y * 60.0), floor(tiempo * 8.0))));
+          uv.x += banda * 0.03 * sin(tiempo * 50.0);                    // líneas que se descolocan
+          vec3 c = texture2D(tDiffuse, uv).rgb * 1.6;
+          c = clamp((c * (2.51 * c + 0.03)) / (c * (2.43 * c + 0.59) + 0.14), 0.0, 1.0);
+          float l = pow(dot(c, vec3(0.299, 0.587, 0.114)), 1.0 / 2.2);
+          c = vec3(l * 0.8, l * 1.0, l * 0.82);                          // blanco y negro verdoso
+          c *= 0.82 + 0.18 * sin(uv.y * 900.0);                          // rayas de televisión
+          c += (azar(uv * 700.0 + tiempo) - 0.5) * 0.16;                 // mucho grano
+          c = mix(c, vec3(azar(uv * 300.0 + tiempo * 3.0)), estatica);   // interferencia al cambiar
+          c *= 1.0 - smoothstep(0.35, 0.75, length(d));                  // bordes negros
+          gl_FragColor = vec4(c, 1.0);
+          return;
+        }
+        vec2 d = vUv - 0.5; float r2 = dot(d, d);
+        float ab = 0.012 * r2 + susto * 0.02;                      // aberración de color en los bordes
+        vec3 c = vec3(texture2D(tDiffuse, vUv + d * ab).r, texture2D(tDiffuse, vUv).g, texture2D(tDiffuse, vUv - d * ab).b);
+        c *= exposicion;
+        c = clamp((c * (2.51 * c + 0.03)) / (c * (2.43 * c + 0.59) + 0.14), 0.0, 1.0);   // aspecto de cine (ACES)
+        float l = dot(c, vec3(0.299, 0.587, 0.114));
+        c = mix(vec3(l), c, 0.78) * vec3(0.94, 1.03, 0.98);        // colores apagados y un poco verdes
+        c = pow(c, vec3(1.0 / 2.2));
+        c *= mix(0.12, 1.0, 1.0 - smoothstep(0.3, 0.85, length(d) * 1.15));   // viñeta: bordes oscuros
+        float n = fract(sin(dot(vUv * 1000.0 + tiempo, vec2(12.9898, 78.233))) * 43758.5453);
+        c += (n - 0.5) * 0.06;                                      // grano de película
+        c = mix(c, vec3(c.r * 1.3 + 0.15, c.g * 0.25, c.b * 0.25), susto);
+        gl_FragColor = vec4(c, 1.0);
+      }`,
+  });
+  composer.addPass(efectoCine);
+} else {
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.25;
+}
+
+unirMallas();
+
+// =====================================================
+//  LAS CÁMARAS DE SEGURIDAD
+//  desde = dónde está colgada la cámara · mira = hacia dónde apunta
+//  mapa = dónde sale en el mapa pequeño (x, y, ancho, alto)
+// =====================================================
+const CAMARAS = [
+  { nombre: 'QUIRÓFANO',        desde: [4.6, 2.9, 4.6],   mira: [20, 0.6, 15],  mapa: [6, 6, 70, 40] },
+  { nombre: 'SALA DE NIÑOS',    desde: [36.6, 2.9, 4.6],  mira: [52, 0.6, 15],  mapa: [90, 6, 70, 40] },
+  { nombre: 'ALMACÉN',          desde: [95.4, 2.9, 4.6],  mira: [80, 0.6, 15],  mapa: [174, 6, 70, 40] },
+  { nombre: 'PASILLO OESTE',    desde: [4.6, 2.9, 24.6],  mira: [40, 0.8, 29],  mapa: [6, 52, 118, 24] },
+  { nombre: 'PASILLO ESTE',     desde: [95.4, 2.9, 24.6], mira: [60, 0.8, 29],  mapa: [126, 52, 118, 24] },
+  { nombre: 'MORGUE',           desde: [4.6, 2.9, 51.4],  mira: [20, 0.6, 40],  mapa: [6, 82, 70, 52] },
+  { nombre: 'PUERTA IZQUIERDA', desde: [32.6, 2.9, 43.6], mira: [41, 0.6, 42],  mapa: [80, 96, 22, 18] },
+  { nombre: 'PUERTA DERECHA',   desde: [67.4, 2.9, 43.6], mira: [59, 0.6, 42],  mapa: [148, 96, 22, 18] },
+  { nombre: 'RECEPCIÓN',        desde: [95.4, 2.9, 51.4], mira: [80, 0.6, 40],  mapa: [174, 82, 70, 52] },
+];
+for (const cam of CAMARAS) {
+  cam.ojo = new THREE.PerspectiveCamera(78, 16 / 9, 0.1, 40);
+  cam.ojo.position.set(...cam.desde);
+  cam.ojo.lookAt(...cam.mira);
+  cam.giroBase = cam.ojo.rotation.y;
+  // la camarita de verdad, colgada en la esquina, con su lucecita roja
+  const cuerpo = caja(0.18, 0.14, 0.3, MAT.plastico, ...cam.desde);
+  cuerpo.lookAt(...cam.mira);
+  cuerpo.position.y += 0.08;
+  escena.add(cuerpo);
+}
+// el mapa pequeño de las cámaras
+CAMARAS.forEach((cam, i) => {
+  const d = document.createElement('div');
+  d.style.cssText = `left:${cam.mapa[0]}px;top:${cam.mapa[1]}px;width:${cam.mapa[2]}px;height:${cam.mapa[3]}px`;
+  d.textContent = cam.mapa[2] > 40 ? 'CAM ' + (i + 1) : String(i + 1);
+  document.getElementById('cctvMapa').appendChild(d);
+  cam.casilla = d;
+});
+const tu = document.createElement('div');
+tu.className = 'tu';
+tu.style.cssText = 'left:104px;top:96px;width:42px;height:18px';
+tu.textContent = 'TÚ';
+document.getElementById('cctvMapa').appendChild(tu);
+
+let enCamaras = false, camActual = 0, estaticaT = 0, monitoresT = 0, monitorToca = 0;
+function cambiarCamara(n) {
+  camActual = (n + CAMARAS.length) % CAMARAS.length;
+  estaticaT = 0.35;                          // interferencia al cambiar
+  sonido(1800, 600, 0.08, 0.08, 'square');   // "clic"
+  CAMARAS.forEach((c, i) => c.casilla.classList.toggle('activa', i === camActual));
+  $('cctvNombre').textContent = 'CAM ' + (camActual + 1) + ' · ' + CAMARAS[camActual].nombre;
+}
+function abrirCamaras(abrir) {
+  enCamaras = abrir;
+  $('cctv').classList.toggle('oculto', !abrir);
+  $('hud').style.opacity = abrir ? 0.35 : 1;
+  sonido(abrir ? 400 : 900, abrir ? 900 : 300, 0.15, 0.15, 'sine');
+  if (abrir) cambiarCamara(camActual);
+}
+// ¿estás mirando los monitores?
+function mirandoMonitores() {
+  const fx = -Math.sin(giroH) * Math.cos(giroV), fy = Math.sin(giroV), fz = -Math.cos(giroH) * Math.cos(giroV);
+  const v = new THREE.Vector3();
+  pantallas[1].malla.getWorldPosition(v);
+  const vx = v.x - camara.position.x, vy = v.y - camara.position.y, vz = v.z - camara.position.z;
+  const d = Math.hypot(vx, vy, vz);
+  return d < 3.5 && (vx * fx + vy * fy + vz * fz) / d > 0.8;
+}
+// dibujar la escena vista desde una cámara de seguridad (con "visión nocturna")
+function conVisionNocturna(fn) {
+  const a = luzAmbiente.intensity, niebla = escena.fog.density, lin = linterna.visible;
+  luzAmbiente.intensity = 1.6; escena.fog.density = 0.035; linterna.visible = false;
+  fn();
+  luzAmbiente.intensity = a; escena.fog.density = niebla; linterna.visible = lin;
+}
+// los monitores del escritorio muestran las cámaras en directo (uno cada vez, para ir rápido)
+function actualizarMonitores(dt) {
+  monitoresT -= dt;
+  if (monitoresT > 0 || energia <= 0) return;
+  monitoresT = 0.08;
+  monitorToca = (monitorToca + 1) % pantallas.length;
+  const p = pantallas[monitorToca];
+  const cam = CAMARAS[(camActual + monitorToca) % CAMARAS.length].ojo;
+  cam.aspect = 4 / 3; cam.updateProjectionMatrix();
+  pantallas.forEach(x => x.malla.visible = false);
+  const sombras = renderer.shadowMap.autoUpdate;
+  renderer.shadowMap.autoUpdate = false;
+  conVisionNocturna(() => {
+    renderer.setRenderTarget(p.video);
+    renderer.render(escena, cam);
+    renderer.setRenderTarget(null);
+  });
+  renderer.shadowMap.autoUpdate = sombras;
+  pantallas.forEach(x => x.malla.visible = true);
+  p.mat.emissiveMap = p.video.texture;
+  p.mat.emissiveIntensity = 1.4;
+  p.mat.emissive.setHex(0x9fe0b0);   // tono verdoso de monitor viejo
+  p.mat.needsUpdate = true;
+}
+
+// =====================================================
+//  CAMINO DE LOS MONSTRUOS: buscan la ruta más corta hasta ti
+// =====================================================
+function buscarCamino(desde, hasta) {
+  const clave = (f, c) => f * 100 + c;
+  const anterior = new Map([[clave(desde[0], desde[1]), null]]);
+  const cola = [desde];
+  while (cola.length) {
+    const [f, c] = cola.shift();
+    if (f === hasta[0] && c === hasta[1]) break;
+    for (const [df, dc] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nf = f + df, nc = c + dc;
+      if (esPared(nf, nc) || anterior.has(clave(nf, nc))) continue;
+      anterior.set(clave(nf, nc), [f, c]);
+      cola.push([nf, nc]);
+    }
+  }
+  if (!anterior.has(clave(hasta[0], hasta[1]))) return [];
+  const camino = [];
+  let p = hasta;
+  while (p) { camino.unshift(p); p = anterior.get(clave(p[0], p[1])); }
+  return camino.slice(1);
+}
+function celdaAlAzar() {
+  while (true) {
+    const f = Math.floor(Math.random() * filas), c = Math.floor(Math.random() * columnas);
+    if (!esPared(f, c) && !enSeguridad(f, c)) return [f, c];
+  }
+}
+
+// =====================================================
+//  SONIDOS (hechos con el ordenador, sin archivos)
+// =====================================================
+let audio = null;
+function sonido(frecInicio, frecFin, duracion, volumen, tipo) {
+  if (!audio) return;
+  try {
+    const t = audio.currentTime;
+    const osc = audio.createOscillator();
+    const vol = audio.createGain();
+    osc.type = tipo;
+    osc.frequency.setValueAtTime(frecInicio, t);
+    osc.frequency.exponentialRampToValueAtTime(frecFin, t + duracion);
+    vol.gain.setValueAtTime(volumen, t);
+    vol.gain.exponentialRampToValueAtTime(0.001, t + duracion);
+    osc.connect(vol).connect(audio.destination);
+    osc.start(t);
+    osc.stop(t + duracion);
+  } catch (e) {}
+}
+const sonidoSusto = () => { sonido(900, 80, 1.4, 0.45, 'sawtooth'); sonido(1300, 120, 1.2, 0.25, 'square'); };
+const sonidoLatido = () => sonido(70, 40, 0.18, 0.6, 'sine');
+const sonidoPuerta = () => { sonido(220, 60, 0.35, 0.4, 'square'); sonido(90, 40, 0.5, 0.5, 'sine'); };
+// zumbido de fondo de los fluorescentes
+let zumbido = null;
+function empezarZumbido() {
+  if (!audio || zumbido) return;
+  try {
+    zumbido = audio.createGain(); zumbido.gain.value = 0.025;
+    const osc = audio.createOscillator(); osc.type = 'sawtooth'; osc.frequency.value = 50;
+    const filtro = audio.createBiquadFilter(); filtro.type = 'lowpass'; filtro.frequency.value = 300;
+    osc.connect(filtro).connect(zumbido).connect(audio.destination); osc.start();
+  } catch (e) {}
+}
+
+// =====================================================
+//  RUIDO DE TERROR DE FONDO (todo hecho con el ordenador)
+// =====================================================
+let ambiente = null;
+// un "eco" de hospital vacío: un ruido que se apaga poco a poco
+function crearEco(segundos) {
+  const largo = audio.sampleRate * segundos;
+  const buffer = audio.createBuffer(2, largo, audio.sampleRate);
+  for (let canal = 0; canal < 2; canal++) {
+    const datos = buffer.getChannelData(canal);
+    for (let i = 0; i < largo; i++) datos[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / largo, 3);
+  }
+  const eco = audio.createConvolver();
+  eco.buffer = buffer;
+  return eco;
+}
+// ruido blanco (como el de una tele sin señal), para viento, pasos y susurros
+function crearRuido(segundos) {
+  const buffer = audio.createBuffer(1, audio.sampleRate * segundos, audio.sampleRate);
+  const datos = buffer.getChannelData(0);
+  for (let i = 0; i < datos.length; i++) datos[i] = Math.random() * 2 - 1;
+  return buffer;
+}
+
+function empezarAmbiente() {
+  if (!audio || ambiente) return;
+  try {
+    const t = audio.currentTime;
+    const salida = audio.createGain();
+    salida.gain.setValueAtTime(0, t);
+    salida.gain.linearRampToValueAtTime(CONFIG.volumenAmbiente, t + 4);   // empieza suave
+    salida.connect(audio.destination);
+    const eco = crearEco(3.5), ecoVol = audio.createGain();
+    ecoVol.gain.value = 0.7;
+    eco.connect(ecoVol).connect(salida);
+    const ruido = crearRuido(4);
+
+    // 1) zumbido muy grave, que da mal rollo
+    const dron = audio.createGain(); dron.gain.value = 0.07;
+    const filtroDron = audio.createBiquadFilter(); filtroDron.type = 'lowpass'; filtroDron.frequency.value = 140;
+    for (const f of [41, 41.6, 61.7]) {
+      const o = audio.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f;
+      o.connect(filtroDron); o.start();
+    }
+    filtroDron.connect(dron); dron.connect(salida); dron.connect(eco);
+
+    // 2) viento que entra por los pasillos (sube y baja)
+    const viento = audio.createBufferSource(); viento.buffer = ruido; viento.loop = true;
+    const filtroViento = audio.createBiquadFilter(); filtroViento.type = 'bandpass'; filtroViento.frequency.value = 450; filtroViento.Q.value = 0.8;
+    const lfo = audio.createOscillator(); lfo.frequency.value = 0.06;
+    const lfoFuerza = audio.createGain(); lfoFuerza.gain.value = 280;
+    lfo.connect(lfoFuerza).connect(filtroViento.frequency); lfo.start();
+    const volViento = audio.createGain(); volViento.gain.value = 0.035;
+    viento.connect(filtroViento).connect(volViento); volViento.connect(salida); volViento.connect(eco);
+    viento.start();
+
+    // 3) dos notas agudas que "chocan" entre sí: tensión
+    const tension = audio.createGain(); tension.gain.value = 0;
+    for (const f of [587, 622]) {
+      const o = audio.createOscillator(); o.type = 'sine'; o.frequency.value = f;
+      o.connect(tension); o.start();
+    }
+    tension.connect(eco);
+
+    ambiente = { salida, eco, ruido, dron, tension };
+    programarSonido();
+  } catch (e) {}
+}
+
+// cada pocos segundos suena algo al azar… (más a menudo cuanto más tarde es)
+function programarSonido() {
+  const espera = Math.max(2.5, 9 - horaActual()) * (0.6 + Math.random() * 0.8);
+  setTimeout(() => {
+    if (ambiente && estado === 'jugando') {
+      const sonidos = [crujido, pasosLejanos, golpeLejano, goteo, susurro, cajaDeMusica, crujido, pasosLejanos, goteo];
+      sonidos[Math.floor(Math.random() * sonidos.length)]();
+      // la tensión y el zumbido suben durante la noche
+      const h = horaActual();
+      ambiente.tension.gain.setTargetAtTime(0.002 + h * 0.0018, audio.currentTime, 2);
+      ambiente.dron.gain.setTargetAtTime(0.07 + h * 0.012, audio.currentTime, 2);
+    }
+    if (ambiente) programarSonido();
+  }, espera * 1000);
+}
+// sale por la izquierda o por la derecha, al azar, y con eco
+function lado(volumen) {
+  const v = audio.createGain(); v.gain.value = volumen;
+  const pan = audio.createStereoPanner ? audio.createStereoPanner() : null;
+  if (pan) { pan.pan.value = Math.random() * 2 - 1; v.connect(pan).connect(ambiente.eco); pan.connect(ambiente.salida); }
+  else { v.connect(ambiente.eco); }
+  return v;
+}
+function envolvente(g, t, subida, bajada, max) {
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(max, t + subida);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + subida + bajada);
+}
+// crujido de metal, como una puerta vieja
+function crujido() {
+  const t = audio.currentTime, salida = lado(0.5);
+  const o = audio.createOscillator(); o.type = 'sawtooth';
+  o.frequency.setValueAtTime(70 + Math.random() * 40, t);
+  for (let i = 1; i < 12; i++) o.frequency.linearRampToValueAtTime(80 + Math.random() * 90, t + i * 0.12);
+  const f = audio.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 900; f.Q.value = 7;
+  const g = audio.createGain(); envolvente(g, t, 0.3, 1.2, 0.25);
+  o.connect(f).connect(g).connect(salida); o.start(t); o.stop(t + 1.6);
+}
+// pasos lejanos que se acercan… o se alejan
+function pasosLejanos() {
+  const t0 = audio.currentTime, salida = lado(0.6), cuantos = 4 + Math.floor(Math.random() * 4), acerca = Math.random() < 0.5;
+  for (let i = 0; i < cuantos; i++) {
+    const t = t0 + i * 0.55, s = audio.createBufferSource(); s.buffer = ambiente.ruido;
+    const f = audio.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 280;
+    const g = audio.createGain(); envolvente(g, t, 0.01, 0.18, 0.15 + 0.12 * (acerca ? i / cuantos : 1 - i / cuantos));
+    s.connect(f).connect(g).connect(salida); s.start(t, Math.random() * 3, 0.25);
+  }
+}
+// un golpe fuerte a lo lejos
+function golpeLejano() {
+  const t = audio.currentTime, salida = lado(0.7);
+  const o = audio.createOscillator(); o.type = 'sine';
+  o.frequency.setValueAtTime(70, t); o.frequency.exponentialRampToValueAtTime(30, t + 0.5);
+  const g = audio.createGain(); envolvente(g, t, 0.005, 0.6, 0.6);
+  o.connect(g).connect(salida); o.start(t); o.stop(t + 0.7);
+  const s = audio.createBufferSource(); s.buffer = ambiente.ruido;
+  const f = audio.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 500;
+  const g2 = audio.createGain(); envolvente(g2, t, 0.005, 0.3, 0.3);
+  s.connect(f).connect(g2).connect(salida); s.start(t, 0, 0.4);
+}
+// gotas de agua cayendo
+function goteo() {
+  const t0 = audio.currentTime, salida = lado(0.3);
+  for (let i = 0; i < 3 + Math.floor(Math.random() * 4); i++) {
+    const t = t0 + i * (0.6 + Math.random() * 0.5);
+    const o = audio.createOscillator(); o.type = 'sine';
+    o.frequency.setValueAtTime(1400 + Math.random() * 400, t); o.frequency.exponentialRampToValueAtTime(500, t + 0.06);
+    const g = audio.createGain(); envolvente(g, t, 0.002, 0.08, 0.2);
+    o.connect(g).connect(salida); o.start(t); o.stop(t + 0.1);
+  }
+}
+// un susurro… ¿quién habla?
+function susurro() {
+  const t = audio.currentTime, salida = lado(0.5), duracion = 1.5 + Math.random();
+  const s = audio.createBufferSource(); s.buffer = ambiente.ruido;
+  const f = audio.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 5;
+  f.frequency.setValueAtTime(1500, t);
+  for (let i = 1; i < 8; i++) f.frequency.linearRampToValueAtTime(1200 + Math.random() * 2000, t + i * duracion / 8);
+  const g = audio.createGain(); envolvente(g, t, 0.3, duracion, 0.12);
+  const temblor = audio.createOscillator(); temblor.frequency.value = 7;
+  const fuerza = audio.createGain(); fuerza.gain.value = 0.05;
+  temblor.connect(fuerza).connect(g.gain); temblor.start(t); temblor.stop(t + duracion + 0.4);
+  s.connect(f).connect(g).connect(salida); s.start(t, Math.random() * 2, duracion + 0.4);
+}
+// la caja de música de Lucía… desafinada y lenta
+function cajaDeMusica() {
+  const t0 = audio.currentTime, salida = lado(0.35);
+  const notas = [659, 784, 988, 880, 784, 659, 740, 622, 659];   // una melodía triste
+  const lenta = 0.45 + Math.random() * 0.2;
+  notas.forEach((frec, i) => {
+    const t = t0 + i * lenta * (1 + i * 0.04);   // cada vez más lenta, como si se le acabara la cuerda
+    const o = audio.createOscillator(); o.type = 'triangle';
+    o.frequency.value = frec * (0.97 + Math.random() * 0.03);
+    const g = audio.createGain(); envolvente(g, t, 0.005, 0.9, 0.12);
+    o.connect(g).connect(salida); o.start(t); o.stop(t + 1);
+  });
+}
+function silenciarAmbiente() {
+  if (ambiente) ambiente.salida.gain.setTargetAtTime(0, audio.currentTime, 0.4);
+}
+
+// =====================================================
+//  CONTROLES: teclado y ratón
+// =====================================================
+const teclas = {};
+let giroH = Math.PI, giroV = -0.12;   // hacia dónde miras: empiezas mirando los monitores
+
+addEventListener('keydown', e => {
+  teclas[e.code] = true;
+  // leyendo una pista: E o Espacio para seguir jugando
+  if (estado === 'leyendo') { if ((e.code === 'KeyE' || e.code === 'Space') && !e.repeat) cerrarPista(); return; }
+  // en las cámaras: A/D o flechas para cambiar, E para salir
+  if (enCamaras && estado === 'jugando' && !e.repeat) {
+    if (e.code === 'KeyA' || e.code === 'ArrowLeft') cambiarCamara(camActual - 1);
+    if (e.code === 'KeyD' || e.code === 'ArrowRight') cambiarCamara(camActual + 1);
+    if (/^Digit[1-9]$/.test(e.code)) cambiarCamara(Number(e.code.slice(5)) - 1);
+    if (e.code === 'KeyE') abrirCamaras(false);
+    return;
+  }
+  if (e.code === 'KeyE' && !e.repeat && estado === 'jugando') {
+    // la E: si miras un botón, abre o cierra esa puerta; si miras los monitores, cámaras; si no, linterna
+    if (pistaMirada) abrirPista(pistaMirada);
+    else if (!botonMirado && mirandoMonitores() && energia > 0) abrirCamaras(true);
+    else if (botonMirado) {
+      if (energia > 0 || botonMirado.cerrada) { botonMirado.cerrada = !botonMirado.cerrada; sonidoPuerta(); }
+    } else linterna.visible = !linterna.visible;
+  }
+});
+addEventListener('keyup', e => { teclas[e.code] = false; });
+addEventListener('mousemove', e => {
+  if (estado !== 'jugando') return;
+  giroH -= e.movementX * 0.0025;
+  giroV -= e.movementY * 0.0025;
+  giroV = Math.max(-1.4, Math.min(1.4, giroV));
+});
+addEventListener('resize', () => {
+  renderer.setSize(innerWidth, innerHeight);
+  if (composer) composer.setSize(innerWidth, innerHeight);
+  camara.aspect = innerWidth / innerHeight;
+  camara.updateProjectionMatrix();
+});
+
+// =====================================================
+//  ESTADO DEL JUEGO
+// =====================================================
+const $ = id => document.getElementById(id);
+let estado = 'titulo';   // titulo, historia, jugando, pausa, susto, perdido o ganado
+let tiempo = 0, aguante = 100, energia = 100, sustoT = 0, culpable = null, latidoT = 0;
+let noche = 1;           // la noche que estás jugando
+let botonMirado = null;  // el botón de puerta que estás mirando
+const jugador = { x: inicio.x, z: inicio.z };
+const RADIO = 0.3;       // lo "gordo" que eres, para no atravesar paredes
+
+function horaActual() { return Math.min(6, Math.floor(tiempo / CONFIG.segundosPorHora)); }
+function textoHora() { const h = horaActual(); return (h === 0 ? 12 : h) + ' AM'; }
+
+// ====== GUARDAR QUÉ NOCHES HAS COMPLETADO (se guarda en el navegador) ======
+function nochesCompletadas() {
+  try { return Number(localStorage.getItem('hospitalMaldito_noches')) || 0; } catch (e) { return 0; }
+}
+function guardarNoche(n) {
+  try { if (n > nochesCompletadas()) localStorage.setItem('hospitalMaldito_noches', n); } catch (e) {}
+}
+function nombreNoche(n) { return 'Noche ' + n + (NOCHES[n - 1].nombre ? ' · ' + NOCHES[n - 1].nombre : ''); }
+
+// ====== EL MENÚ DE NOCHES ======
+function crearMenu() {
+  const hechas = nochesCompletadas();
+  const lista = $('noches');
+  lista.innerHTML = '';
+  NOCHES.forEach((info, i) => {
+    const n = i + 1;
+    const boton = document.createElement('button');
+    const bloqueada = n > hechas + 1;
+    boton.className = 'noche' + (n <= hechas ? ' completada' : '') + (bloqueada ? ' bloqueada' : '');
+    boton.innerHTML = `<b>Noche ${n}</b>` + (n <= hechas ? '✅ Completada' : bloqueada ? '🔒 Bloqueada' : '▶ Jugar');
+    if (!bloqueada) boton.onclick = () => { noche = n; prepararNoche(); mostrarHistoria(); };
+    lista.appendChild(boton);
+  });
+}
+// ====== LA HISTORIA: un texto en cada clic, que se escribe letra a letra ======
+let paso = 0, escribiendo = null;
+function mostrarHistoria() {
+  $('titulo').classList.add('oculto');
+  $('historia').classList.remove('oculto');
+  $('hud').style.display = 'none';
+  estado = 'historia';
+  montarEscena(NOCHES[noche - 1].historia[0].dibujo);
+  $('historiaTitulo').textContent = nombreNoche(noche).toUpperCase();
+  paso = 0;
+  escribirTexto(NOCHES[noche - 1].historia[0].texto);
+}
+function escribirTexto(texto) {
+  inicioDibujo = performance.now() / 1000;   // cada dibujo empieza su animación desde cero
+  clearInterval(escribiendo);
+  escribiendo = null;
+  if (!CONFIG.textoHistoria) { $('historiaTexto').textContent = ''; return; }
+  let letras = 0;
+  $('historiaTexto').textContent = '';
+  escribiendo = setInterval(() => {
+    letras++;
+    $('historiaTexto').textContent = texto.slice(0, letras);
+    if (letras >= texto.length) { clearInterval(escribiendo); escribiendo = null; }
+  }, 35);
+}
+$('historia').addEventListener('click', () => {
+  const textos = NOCHES[noche - 1].historia;
+  if (escribiendo) {                       // si aún se está escribiendo, la muestra entera
+    clearInterval(escribiendo); escribiendo = null;
+    $('historiaTexto').textContent = textos[paso].texto;
+    return;
+  }
+  paso++;
+  if (paso < textos.length) { montarEscena(textos[paso].dibujo); escribirTexto(textos[paso].texto); }
+  else { quitarEscena(); $('historia').classList.add('oculto'); empezarAJugar(true); }   // ¡a jugar! (pero primero te despiertas)
+});
+
+// =====================================================
+//  LA HISTORIA EN 3D: escenas de cine hechas con el propio juego
+// =====================================================
+const camHistoria = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.05, 120);
+const decorado = new THREE.Group();   // cosas que solo salen en una escena
+escena.add(decorado);
+let escenaActual = null, inicioDibujo = 0;
+const ORIGINAL = { niebla: escena.fog.density, color: escena.fog.color.getHex(), ambiente: luzAmbiente.intensity, cielo: luzAmbiente.color.getHex(), suelo: luzAmbiente.groundColor.getHex() };
+
+// ---------- Lucía (hecha con las mismas piezas que los monstruos) ----------
+function crearNina(fantasma) {
+  const brilloFantasma = new THREE.MeshStandardMaterial({ color: 0x9fd8ff, emissive: 0x5aa8ff, emissiveIntensity: 1.6, transparent: true, opacity: 0.55, depthWrite: false });
+  const m = fantasma ? () => brilloFantasma : (c) => piel(c);
+  const c = cuerpoBase({ piernas: m(0xe8cfae), brazos: m(0xe8cfae), manos: m(0xe8cfae), torso: m(0xc8508a), cabeza: m(0xe8cfae), cuello: m(0xe8cfae), zapatos: m(0x5a2030), cabezaTam: 0.16, brazoLargo: 0.6 });
+  c.grupo.add(malla(new THREE.CylinderGeometry(0.2, 0.36, 0.75, 16, 1, true), fantasma ? brilloFantasma : new THREE.MeshStandardMaterial({ color: 0xc8508a, roughness: 0.8, side: THREE.DoubleSide }), 0, 1.15, 0));   // vestido
+  const pelo = m(0x4a2810);
+  const melena = malla(new THREE.SphereGeometry(0.17, 16, 12), pelo, 0, 0.05, -0.03);
+  melena.scale.set(1.05, 1.1, 1.05);
+  c.cabeza.add(melena);
+  for (const s of [-1, 1]) c.cabeza.add(malla(new THREE.SphereGeometry(0.07, 10, 8), pelo, s * 0.19, -0.02, -0.04));   // coletas
+  if (!fantasma) for (const s of [-1, 1]) c.cabeza.add(malla(new THREE.SphereGeometry(0.018, 8, 6), MAT.negro, s * 0.055, 0.02, 0.15));
+  else for (const s of [-1, 1]) c.cabeza.add(malla(new THREE.SphereGeometry(0.02, 8, 6), brilla(0xffffff, 4), s * 0.055, 0.02, 0.15));
+  c.grupo.scale.setScalar(0.62);
+  // su muñeco de trapo, en la mano
+  const mini = crearMonstruo('muneco');
+  mini.grupo.scale.setScalar(0.22);
+  mini.grupo.position.set(0.02, -0.7, 0.12);
+  c.brazoD.add(mini.grupo);
+  c.fase = 0;
+  return c;
+}
+
+// ---------- el exterior del hospital (lejos del mapa, solo para las escenas) ----------
+const EXT = { x: -80, z: 20 };
+const exterior = new THREE.Group();
+exterior.visible = false;
+escena.add(exterior);
+(() => {
+  const asfalto = malla(new THREE.PlaneGeometry(160, 160), new THREE.MeshStandardMaterial({ color: 0x18191c, roughness: 0.3, metalness: 0.1 }), EXT.x, 0, EXT.z);
+  asfalto.rotation.x = -Math.PI / 2;
+  exterior.add(asfalto);
+  // la fachada, con ventanas (algunas encendidas)
+  const c = lienzo(512), e = lienzo(512);
+  const g = c.getContext('2d'), ge = e.getContext('2d');
+  g.fillStyle = '#4a4c50'; g.fillRect(0, 0, 512, 512);
+  ge.fillStyle = '#000'; ge.fillRect(0, 0, 512, 512);
+  manchas(g, 512, 80, '20,20,20', 10, 60, 0.4);
+  regueros(g, 512, 60, '20,18,15', 0.4);
+  for (let x = 0; x < 8; x++) for (let y = 0; y < 4; y++) {
+    const encendida = Math.random() < 0.18;
+    g.fillStyle = '#101216'; g.fillRect(24 + x * 62, 30 + y * 100, 40, 56);
+    if (encendida) { ge.fillStyle = Math.random() < 0.3 ? '#ff3020' : '#d8b860'; ge.fillRect(24 + x * 62, 30 + y * 100, 40, 56); }
+  }
+  ge.fillStyle = '#ffe0a0'; ge.fillRect(232, 440, 48, 72);   // la puerta, con luz
+  const fachada = malla(new THREE.BoxGeometry(40, 16, 1), new THREE.MeshStandardMaterial({ map: texturaDe(c, null, true), emissiveMap: texturaDe(e, null, true), emissive: 0xffffff, emissiveIntensity: 2, roughness: 0.9 }), EXT.x, 8, EXT.z - 10);
+  exterior.add(fachada);
+  // cartel de hospital: una H blanca sobre azul
+  const h = lienzo(128), gh = h.getContext('2d');
+  gh.fillStyle = '#1a3a8a'; gh.fillRect(0, 0, 128, 128);
+  gh.fillStyle = '#fff'; gh.fillRect(34, 20, 16, 88); gh.fillRect(78, 20, 16, 88); gh.fillRect(34, 56, 60, 16);
+  exterior.add(malla(new THREE.BoxGeometry(2, 2, 0.2), new THREE.MeshStandardMaterial({ emissiveMap: texturaDe(h, null, true), emissive: 0xffffff, emissiveIntensity: 1.5, color: 0x000000 }), EXT.x, 4.3, EXT.z - 9.4));
+  // la luna
+  exterior.add(malla(new THREE.SphereGeometry(3, 20, 16), brilla(0xe8f0ff, 3), EXT.x + 30, 30, EXT.z - 60));
+  const luna = new THREE.SpotLight(0x8aa8ff, 1.0, 120, 0.7, 0.8, 1);
+  luna.position.set(EXT.x + 15, 40, EXT.z + 20);
+  luna.target.position.set(EXT.x, 0, EXT.z);
+  exterior.add(luna, luna.target);
+  const puerta = new THREE.PointLight(0xffc070, 3, 14, 2);
+  puerta.position.set(EXT.x, 2, EXT.z - 8);
+  exterior.add(puerta);
+})();
+// lluvia
+const LLUVIA = 1500;
+const posLluvia = new Float32Array(LLUVIA * 3);
+for (let i = 0; i < LLUVIA; i++) { posLluvia[i * 3] = EXT.x + azar(-25, 25); posLluvia[i * 3 + 1] = azar(0, 20); posLluvia[i * 3 + 2] = EXT.z + azar(-10, 30); }
+const geoLluvia = new THREE.BufferGeometry();
+geoLluvia.setAttribute('position', new THREE.BufferAttribute(posLluvia, 3));
+const lluvia = new THREE.Points(geoLluvia, new THREE.PointsMaterial({ color: 0x9ab0d0, size: 0.06, transparent: true, opacity: 0.6, depthWrite: false }));
+lluvia.visible = false;
+escena.add(lluvia);
+// el sol del amanecer
+const sol = malla(new THREE.SphereGeometry(8, 24, 16), brilla(0xffd28a, 4), EXT.x, 6, EXT.z + 90);
+sol.visible = false;
+escena.add(sol);
+
+// ---------- cosas nuevas del hospital que salen en la historia (y también en el juego) ----------
+// el reloj de la sala de seguridad (sus agujas se mueven con la hora del juego)
+const agujas = {};
+(() => {
+  const c = lienzo(256), g = c.getContext('2d');
+  g.fillStyle = '#e8e4d8'; g.beginPath(); g.arc(128, 128, 124, 0, Math.PI * 2); g.fill();
+  g.lineWidth = 10; g.strokeStyle = '#222'; g.stroke();
+  g.fillStyle = '#222';
+  for (let i = 0; i < 12; i++) { g.save(); g.translate(128, 128); g.rotate(i * Math.PI / 6); g.fillRect(-5, -110, 10, 26); g.restore(); }
+  manchas(g, 256, 12, '90,70,30', 8, 40, 0.4);
+  manchas(g, 256, 2, '90,0,0', 6, 20, 0.8);
+  const cara = malla(new THREE.CircleGeometry(0.45, 32), new THREE.MeshStandardMaterial({ map: texturaDe(c, null, true), roughness: 0.4 }), 50, 2.35, 40.03);
+  escena.add(cara);
+  escena.add(malla(new THREE.TorusGeometry(0.46, 0.035, 8, 32), MAT.negro, 50, 2.35, 40.04));
+  for (const [nombre, largo, ancho] of [['hora', 0.24, 0.035], ['minuto', 0.36, 0.022]]) {
+    const pivote = new THREE.Group(); pivote.position.set(50, 2.35, 40.06);
+    pivote.add(caja(ancho, largo, 0.01, MAT.negro, 0, largo / 2 - 0.03, 0));
+    escena.add(pivote);
+    agujas[nombre] = pivote;
+  }
+})();
+function moverReloj(horas) {   // horas: 0 = 12 en punto
+  agujas.hora.rotation.z = -horas / 12 * Math.PI * 2;
+  agujas.minuto.rotation.z = -horas * Math.PI * 2;
+}
+// la camita de Lucía, en la sala de niños
+const CAMA = { x: 42.5, z: 6.2 };
+(() => {
+  const g = new THREE.Group();
+  g.add(caja(1.6, 0.08, 0.85, MAT.cromado, 0, 0.45, 0));
+  g.add(caja(1.55, 0.14, 0.8, crearMatTela('#c87aa0', '60,30,40'), 0, 0.56, 0));   // manta rosa
+  g.add(caja(0.06, 0.8, 0.85, MAT.cromado, -0.8, 0.5, 0));
+  g.add(caja(0.06, 0.55, 0.85, MAT.cromado, 0.8, 0.4, 0));
+  g.add(caja(0.4, 0.1, 0.55, MAT.sabana, -0.55, 0.68, 0));                         // almohada
+  for (const [a, b] of [[-0.75, -0.38], [0.75, -0.38], [-0.75, 0.38], [0.75, 0.38]]) g.add(tubo(0.02, 0.45, MAT.cromado, a, 0.22, b));
+  // la marca donde estaba el muñeco: un hueco limpio en una manta llena de polvo
+  const m = lienzo(128), gm = m.getContext('2d');
+  gm.fillStyle = 'rgba(120,110,90,0.55)'; gm.fillRect(0, 0, 128, 128);
+  gm.globalCompositeOperation = 'destination-out';
+  gm.beginPath(); gm.ellipse(64, 40, 18, 18, 0, 0, Math.PI * 2); gm.fill();
+  gm.beginPath(); gm.ellipse(64, 80, 22, 30, 0, 0, Math.PI * 2); gm.fill();
+  const polvoCama = malla(new THREE.PlaneGeometry(0.7, 0.7), new THREE.MeshStandardMaterial({ map: texturaDe(m, null, true), transparent: true, depthWrite: false, roughness: 1 }), 0.2, 0.64, 0);
+  polvoCama.rotation.set(-Math.PI / 2, 0, Math.PI / 2);
+  g.add(polvoCama);
+  // juguetes por el suelo
+  [[0x883333, 0.9, 0.7], [0x338833, 1.2, 0.5], [0x333388, 1.0, 0.95], [0x888833, 1.4, 0.8]].forEach(([col, x, z]) => {
+    const b = caja(0.16, 0.16, 0.16, new THREE.MeshStandardMaterial({ color: col, roughness: 0.5 }), x, 0.08, z);
+    b.rotation.y = Math.random();
+    g.add(b);
+  });
+  g.position.set(CAMA.x, 0, CAMA.z);
+  escena.add(g);
+})();
+
+// ---------- piezas que salen solo en algunas escenas ----------
+function ojosEnLaOscuridad(x, y, z) {
+  const g = new THREE.Group();
+  for (const s of [-1, 1]) g.add(malla(new THREE.SphereGeometry(0.035, 10, 8), brilla(0xff1010, 12), x, y, z + s * 0.1));
+  return g;
+}
+function puertasQuirofano() {
+  const g = new THREE.Group();
+  for (const s of [-1, 1]) {
+    g.add(caja(1.2, 2.5, 0.08, MAT.metal, s * 0.62, 1.25, 0));
+    g.add(malla(new THREE.CircleGeometry(0.18, 20), brilla(0xbfe8d8, 0.4), s * 0.62, 1.7, 0.05));
+  }
+  g.add(caja(2.8, 0.2, 0.15, MAT.plastico, 0, 2.62, 0));
+  const piloto = caja(0.7, 0.18, 0.1, brilla(0xff1010, 6), 0, 2.95, 0.05);   // luz roja de "operando"
+  g.add(piloto);
+  const luzRoja = new THREE.PointLight(0xff2010, 2, 8, 2);
+  luzRoja.position.set(0, 2.6, 0.8);
+  g.add(luzRoja);
+  g.userData.piloto = piloto; g.userData.luz = luzRoja;
+  return g;
+}
+function nota() {
+  const c = lienzo(512), g = c.getContext('2d');
+  g.fillStyle = '#d9d2b8'; g.fillRect(0, 0, 512, 512);
+  manchas(g, 512, 20, '120,100,60', 10, 60, 0.4);
+  g.strokeStyle = '#2a2a3a'; g.lineWidth = 4;
+  for (let i = 0; i < 7; i++) { g.beginPath(); for (let x = 40; x < 470; x += 12) g.lineTo(x, 50 + i * 34 + Math.sin(x * 0.2 + i) * 5); g.stroke(); }   // garabatos
+  g.fillStyle = '#c8c0a8'; g.fillRect(156, 300, 200, 180);   // dibujo de la doctora
+  g.strokeStyle = '#222'; g.lineWidth = 5; g.beginPath(); g.arc(256, 380, 55, 0, Math.PI * 2); g.stroke();
+  g.fillStyle = '#b00'; g.fillRect(222, 360, 22, 16); g.fillRect(268, 360, 22, 16);
+  g.beginPath(); g.arc(256, 395, 26, 0.1 * Math.PI, 0.9 * Math.PI); g.stroke();
+  g.strokeStyle = '#a00'; g.lineWidth = 10;
+  g.beginPath(); g.moveTo(150, 290); g.lineTo(362, 490); g.moveTo(362, 290); g.lineTo(150, 490); g.stroke();   // tachado
+  const m = malla(new THREE.PlaneGeometry(0.42, 0.42), new THREE.MeshStandardMaterial({ map: texturaDe(c, null, true), roughness: 0.9 }), 0, 0, 0);
+  m.rotation.set(-Math.PI / 2, 0, 0.15);
+  return m;
+}
+function retrato() {
+  const c = lienzo(256), g = c.getContext('2d');
+  g.fillStyle = '#7a5a30'; g.fillRect(0, 0, 256, 320);
+  g.fillStyle = '#e8e0cc'; g.fillRect(20, 20, 216, 216);
+  // Lucía dibujada con ceras
+  g.fillStyle = '#c8508a'; g.beginPath(); g.moveTo(128, 120); g.lineTo(80, 220); g.lineTo(176, 220); g.fill();
+  g.fillStyle = '#e8c8a0'; g.beginPath(); g.arc(128, 95, 34, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#4a2810'; g.beginPath(); g.arc(128, 82, 36, Math.PI, 0); g.fill(); g.beginPath(); g.arc(88, 100, 14, 0, 7); g.arc(168, 100, 14, 0, 7); g.fill();
+  g.fillStyle = '#222'; g.fillRect(114, 92, 6, 6); g.fillRect(136, 92, 6, 6);
+  g.strokeStyle = '#a03030'; g.lineWidth = 3; g.beginPath(); g.arc(128, 104, 10, 0.1 * Math.PI, 0.9 * Math.PI); g.stroke();
+  g.fillStyle = '#e8b020'; g.beginPath(); g.arc(200, 50, 18, 0, 7); g.fill();   // un solecito
+  const marco = new THREE.Group();
+  marco.add(caja(0.42, 0.42, 0.03, new THREE.MeshStandardMaterial({ color: 0x5a3a1a, roughness: 0.6 }), 0, 0, 0));
+  const foto = malla(new THREE.PlaneGeometry(0.36, 0.36), new THREE.MeshStandardMaterial({ map: texturaDe(c, null, true), roughness: 0.8 }), 0, 0, 0.02);
+  marco.add(foto);
+  return marco;
+}
+
+// ---------- ayudantes para mover a los actores ----------
+function mon(id) { return monstruos.find(m => m.info.id === id); }
+function poner(m, x, z, mirarX, mirarZ) {
+  m.x = x; m.z = z;
+  m.grupo.position.set(x, 0, z);
+  m.grupo.lookAt(mirarX, 0, mirarZ);
+}
+function apuntar(desde, hacia) {
+  camHistoria.position.set(...desde);
+  camHistoria.lookAt(...hacia);
+}
+function luzFoco(color, intensidad, x, y, z, haciaX, haciaY, haciaZ) {
+  const l = new THREE.SpotLight(color, intensidad, 14, 0.6, 0.7, 1.5);
+  l.position.set(x, y, z);
+  l.target.position.set(haciaX, haciaY, haciaZ);
+  decorado.add(l, l.target);
+  return l;
+}
+
+// ---------- LAS ESCENAS ----------
+// montar = preparar la escena · animar = lo que se mueve (t = segundos desde que empezó)
+const ESCENAS = {
+  llegada: {
+    exterior: true, lluvia: true,
+    montar(d) { d.nina = crearNina(false); decorado.add(d.nina.grupo); },
+    animar(t, dt, d) {
+      const avance = Math.min(t * 0.9, 13);
+      d.nina.grupo.position.set(EXT.x + 2, 0, EXT.z + 8 - avance);
+      d.nina.grupo.lookAt(EXT.x + 2, 0, EXT.z - 20);
+      animarCuerpo(d.nina, avance < 13 ? 1.2 : 0.05, dt);
+      apuntar([EXT.x + 5.5 - t * 0.12, 1.3, EXT.z + 10], [EXT.x + 1.5, 2.6, EXT.z - 5]);
+    },
+  },
+  doctora: {
+    montar(d) { poner(mon('doctora'), 18, 9, 18, 14); d.foco = luzFoco(0xdff4ff, 1.2, 18, 3.1, 9.6, 18, 1.5, 9); },
+    animar(t, dt, d) {
+      animarCuerpo(mon('doctora'), 0.05, dt);
+      d.foco.intensity = Math.random() < 0.08 ? 0.15 : 1.2;   // la luz parpadea
+      apuntar([18, 1.72, 12.6 - Math.min(t, 6) * 0.12], [18, 1.82, 9]);
+    },
+  },
+  doctoraRoja: {
+    montar(d) { poner(mon('doctora'), 18, 9, 18, 14); d.foco = luzFoco(0xff2a10, 2, 18, 3.1, 9.6, 18, 1.5, 9); },
+    animar(t, dt, d) {
+      animarCuerpo(mon('doctora'), 0.05, dt);
+      d.foco.intensity = 1.8 + Math.sin(t * 6) * 0.6;
+      apuntar([18 + Math.sin(t * 0.7) * 0.15, 1.7, 12.2 - Math.min(t, 6) * 0.25], [18, 1.85, 9]);
+    },
+  },
+  quirofano: {
+    montar(d) {
+      d.puertas = puertasQuirofano(); d.puertas.position.set(18, 0, 4.1); decorado.add(d.puertas);
+      const muneco = crearMonstruo('muneco');
+      muneco.grupo.scale.setScalar(0.32);
+      muneco.grupo.rotation.set(-Math.PI / 2, 0, 0.6);
+      muneco.grupo.position.set(18.4, 0.12, 6.4);
+      decorado.add(muneco.grupo);
+      poner(mon('doctora'), 28, 18, 28, 19);
+    },
+    animar(t, dt, d) {
+      const on = Math.sin(t * 3) > 0;
+      d.puertas.userData.piloto.material.emissiveIntensity = on ? 6 : 0.4;
+      d.puertas.userData.luz.intensity = on ? 2.2 : 0.2;
+      apuntar([16.8, 1.45, 10.5 - Math.min(t, 5) * 0.2], [18, 1.2, 4.5]);
+    },
+  },
+  pasillo: {
+    montar(d) {
+      d.ojos = ojosEnLaOscuridad(64, 1.75, 28); decorado.add(d.ojos);
+      d.linterna = luzFoco(0xffe8c0, 2.4, 9, 1.5, 28.2, 30, 1.2, 28);
+    },
+    animar(t, dt, d) {
+      d.ojos.visible = Math.sin(t * 1.3) > -0.6;   // los ojos parpadean…
+      d.ojos.position.x = -Math.min(t, 8) * 0.5;   // …y se acercan
+      apuntar([9 + Math.sin(t * 2.2) * 0.03, 1.55 + Math.sin(t * 4.4) * 0.02, 28.2], [40, 1.4, 28]);
+    },
+  },
+  reloj: {
+    animar(t) { moverReloj(t * 0.9); apuntar([50, 1.75, 43.2 - Math.min(t, 6) * 0.15], [50, 2.3, 40]); },
+  },
+  nota: {
+    montar(d) { d.nota = nota(); d.nota.position.set(49.2, 0.945, 46.95); decorado.add(d.nota); },
+    animar(t) { apuntar([49.2 + Math.sin(t * 0.5) * 0.05, 1.55 - Math.min(t, 5) * 0.04, 46.55], [49.2, 0.94, 46.97]); },
+  },
+  robot: {
+    montar(d) {
+      poner(mon('doctora'), 16.6, 9.5, 18, 15);
+      poner(mon('robot'), 19.6, 9.2, 18, 15);
+      d.foco = luzFoco(0xdff4ff, 1.6, 18, 3.1, 11, 18, 1, 9);
+    },
+    animar(t, dt, d) {
+      animarCuerpo(mon('doctora'), 0.05, dt); animarCuerpo(mon('robot'), 0.05, dt);
+      d.foco.intensity = Math.random() < 0.06 ? 0.2 : 1.6;
+      apuntar([18, 1.55, 15 - Math.min(t, 6) * 0.2], [18, 1.6, 9.4]);
+    },
+  },
+  cama: {
+    montar(d) { d.foco = luzFoco(0xa8c0ff, 3, CAMA.x + 0.5, 3.1, CAMA.z + 1.5, CAMA.x, 0.5, CAMA.z); },
+    animar(t) { apuntar([CAMA.x + 3.2 - Math.min(t, 6) * 0.15, 1.5, CAMA.z + 3.2 - Math.min(t, 6) * 0.15], [CAMA.x, 0.55, CAMA.z]); },
+  },
+  muneco: {
+    montar(d) { d.foco = luzFoco(0xffd8c0, 2.5, 46, 3.1, 28, 40, 0.5, 28); },
+    animar(t, dt, d) {
+      const m = mon('muneco'), x = 38 + Math.min(t * 0.7, 6);
+      m.grupo.position.set(x, Math.abs(Math.sin(m.fase)) * 0.03, 28);
+      m.grupo.lookAt(50, 0, 28);
+      animarCuerpo(m, 1, dt);
+      d.foco.intensity = Math.random() < 0.07 ? 0.2 : 2.5;
+      apuntar([47.5, 1.05, 28.4], [x, 1.2, 28]);
+    },
+  },
+  munecoFoto: {
+    montar(d) {
+      poner(mon('muneco'), 50, 10, 50, 15);
+      d.retrato = retrato(); d.retrato.position.set(50, 1.12, 10.5); d.retrato.rotation.x = -0.15; decorado.add(d.retrato);
+      d.foco = luzFoco(0xffe0c0, 1.1, 50, 3, 12, 50, 1.2, 10);
+    },
+    animar(t, dt, d) {
+      animarCuerpo(mon('muneco'), 0.05, dt);
+      apuntar([50.3, 1.3, 12.6 - Math.min(t, 6) * 0.15], [50, 1.35, 10]);
+    },
+  },
+  camara: {
+    cctv: 5,   // se ve como la cámara 6 (morgue)
+    montar() { poner(mon('silueta'), 11, 47, 4.6, 51.4); },
+    animar(t, dt) {
+      const m = mon('silueta');
+      m.grupo.position.set(11 + Math.min(t * 0.3, 2), 0, 47 - Math.min(t * 0.2, 1.3));
+      animarCuerpo(m, 0.8, dt);
+    },
+  },
+  silueta: {
+    montar(d) {
+      poner(mon('silueta'), 18, 46, 18, 50);
+      const contraluz = new THREE.PointLight(0x7a9ac0, 4, 7, 2); contraluz.position.set(18, 2.2, 44.6); decorado.add(contraluz);
+    },
+    animar(t, dt) { animarCuerpo(mon('silueta'), 0.05, dt); apuntar([18, 1.95, 49 - Math.min(t, 6) * 0.15], [18, 2.2, 46]); },
+  },
+  siluetaNina: {
+    montar(d) {
+      poner(mon('silueta'), 16.8, 46, 18, 50);
+      d.nina = crearNina(true); d.nina.grupo.position.set(19.2, 0, 46.3); d.nina.grupo.lookAt(18, 0, 50); decorado.add(d.nina.grupo);
+      d.luz = new THREE.PointLight(0x7ab8ff, 2.5, 6, 2); d.luz.position.set(19.2, 1, 46.8); decorado.add(d.luz);
+    },
+    animar(t, dt, d) {
+      animarCuerpo(mon('silueta'), 0.05, dt);
+      d.nina.grupo.position.y = Math.sin(t * 1.5) * 0.05 + 0.05;   // flota
+      d.luz.intensity = 2.2 + Math.sin(t * 3) * 0.5;
+      apuntar([18, 1.5, 50 - Math.min(t, 6) * 0.15], [18, 1.2, 46]);
+    },
+  },
+  amanecer: {
+    exterior: true, amanecer: true,
+    montar(d) {
+      d.nina = crearNina(true); d.nina.grupo.position.set(EXT.x, 0, EXT.z + 14); d.nina.grupo.lookAt(EXT.x, 0, EXT.z); decorado.add(d.nina.grupo);
+      d.nina.brazoI.rotation.z = -2.6;   // te dice adiós con la mano
+      const luz = new THREE.PointLight(0xffc890, 4, 20, 2); luz.position.set(EXT.x, 3, EXT.z + 10); decorado.add(luz);
+    },
+    animar(t, dt, d) {
+      d.nina.brazoI.rotation.z = -2.5 + Math.sin(t * 5) * 0.3;
+      d.nina.grupo.position.y = Math.sin(t * 1.5) * 0.05 + 0.08;
+      apuntar([EXT.x + 0.5, 1.2, EXT.z + 8 - Math.min(t, 6) * 0.2], [EXT.x, 1.1, EXT.z + 14]);
+    },
+  },
+};
+
+// prepara una escena de la historia
+function montarEscena(nombre) {
+  quitarEscena();
+  escenaActual = { nombre, def: ESCENAS[nombre], datos: {} };
+  const def = escenaActual.def;
+  exterior.visible = !!def.exterior;
+  lluvia.visible = !!def.lluvia;
+  sol.visible = !!def.amanecer;
+  if (def.exterior) {
+    const color = def.amanecer ? 0xd8885a : 0x0a0e18;
+    escena.fog.color.setHex(color); escena.background.setHex(color);
+    escena.fog.density = def.amanecer ? 0.012 : 0.022;
+    luzAmbiente.color.setHex(def.amanecer ? 0xffc8a0 : 0x3a4a6a);
+    luzAmbiente.groundColor.setHex(def.amanecer ? 0x6a4030 : 0x101010);
+    luzAmbiente.intensity = def.amanecer ? 1.4 : 0.22;
+  }
+  linterna.visible = false;
+  if (def.montar) def.montar(escenaActual.datos);
+  decorado.traverse(o => { if (o.isMesh) { o.castShadow = ALTA; o.receiveShadow = ALTA; } });
+  // ¿se ve como una cámara de seguridad?
+  $('cctv').classList.toggle('oculto', def.cctv === undefined);
+  if (def.cctv !== undefined) $('cctvNombre').textContent = 'CAM ' + (def.cctv + 1) + ' · ' + CAMARAS[def.cctv].nombre;
+}
+// lo deja todo como estaba para poder jugar
+function quitarEscena() {
+  while (decorado.children.length) decorado.remove(decorado.children[0]);
+  for (const m of monstruos) {
+    m.x = m.casa.x; m.z = m.casa.z;
+    m.grupo.position.set(m.x, 0, m.z);
+    m.grupo.rotation.set(0, 0, 0);
+  }
+  exterior.visible = lluvia.visible = sol.visible = false;
+  escena.fog.density = ORIGINAL.niebla;
+  escena.fog.color.setHex(ORIGINAL.color); escena.background.setHex(ORIGINAL.color);
+  luzAmbiente.intensity = ORIGINAL.ambiente;
+  luzAmbiente.color.setHex(ORIGINAL.cielo); luzAmbiente.groundColor.setHex(ORIGINAL.suelo);
+  linterna.visible = true;
+  $('cctv').classList.add('oculto');
+  moverReloj(0);
+  escenaActual = null;
+}
+// se llama en cada fotograma mientras se ve la historia
+function dibujarHistoria(t, dt) {
+  if (estado !== 'historia' || !escenaActual) return;
+  const def = escenaActual.def;
+  const tt = t - inicioDibujo;
+  if (def.animar) def.animar(tt, dt, escenaActual.datos);
+  if (lluvia.visible) {   // la lluvia cae
+    const p = geoLluvia.attributes.position;
+    for (let i = 0; i < LLUVIA; i++) { let y = p.getY(i) - dt * 18; if (y < 0) y += 20; p.setY(i, y); }
+    p.needsUpdate = true;
+  }
+  camHistoria.aspect = innerWidth / innerHeight;
+  camHistoria.updateProjectionMatrix();
+}
+
+// =====================================================
+//  TUS BRAZOS: los ves mientras juegas, con la linterna en la mano
+// =====================================================
+const brazos = new THREE.Group();
+camara.add(brazos);
+// --- materiales: piel con poros y tela del uniforme ---
+const MAT_PIEL = (() => {
+  const color = lienzo(256), alto = lienzo(256), rug = lienzo(256);
+  const gc = color.getContext('2d'), ga = alto.getContext('2d'), gr = rug.getContext('2d');
+  gc.fillStyle = '#c99a7c'; gc.fillRect(0, 0, 256, 256);
+  manchas(gc, 256, 60, '170,90,70', 6, 30, 0.25);     // zonas más rojizas
+  manchas(gc, 256, 40, '230,190,160', 6, 30, 0.2);    // zonas más claras
+  ga.fillStyle = '#808080'; ga.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 3000; i++) { ga.fillStyle = `rgba(0,0,0,${Math.random() * 0.25})`; ga.fillRect(Math.random() * 256, Math.random() * 256, 1, 1); }   // poros
+  gr.fillStyle = '#9a9a9a'; gr.fillRect(0, 0, 256, 256);
+  manchas(gr, 256, 30, '120,120,120', 10, 40, 0.5);   // un poco de brillo de sudor
+  return material(color, alto, rug, { fuerza: 0.8 });
+})();
+const MAT_MANGA = crearMatTela('#1d2847', '10,10,20');                  // uniforme azul marino
+const MAT_PUÑO = new THREE.MeshStandardMaterial({ color: 0x121a30, roughness: 0.9 });
+const MAT_GOMA = new THREE.MeshStandardMaterial({ color: 0x141414, roughness: 0.75 });
+const MAT_ALUMINIO = new THREE.MeshStandardMaterial({ color: 0x2a2c30, metalness: 0.8, roughness: 0.35 });
+const lenteLinterna = brilla(0xfff0c8, 6);
+
+// una manga con arrugas (la forma de un jarrón tumbado)
+function manga(largo, radio) {
+  const perfil = [];
+  for (let i = 0; i <= 20; i++) {
+    const k = i / 20;
+    perfil.push(new THREE.Vector2(radio * (1.15 - 0.2 * k) + Math.sin(k * 26) * 0.003 + (Math.random() - 0.5) * 0.002, k * largo));
+  }
+  const m = malla(new THREE.LatheGeometry(perfil, 18), MAT_MANGA, 0, 0, 0);
+  m.rotation.x = -Math.PI / 2;   // tumbada, apuntando hacia delante
+  return m;
+}
+// un dedo: varias falanges que se doblan (curva = cuánto se dobla cada articulación)
+function dedo(largos, grosor, curva, ejeCurva) {
+  const raiz = new THREE.Group();
+  let padre = raiz;
+  largos.forEach((largo, i) => {
+    const art = new THREE.Group();
+    art.rotation[ejeCurva] = curva[i];
+    padre.add(art);
+    art.add(malla(new THREE.SphereGeometry(grosor * 1.05, 10, 8), MAT_PIEL, 0, 0, 0));          // nudillo
+    const hueso = malla(new THREE.CylinderGeometry(grosor * 0.92, grosor, largo, 10), MAT_PIEL, 0, 0, -largo / 2);
+    hueso.rotation.x = Math.PI / 2;
+    art.add(hueso);
+    if (i === largos.length - 1) {
+      art.add(malla(new THREE.SphereGeometry(grosor * 0.92, 10, 8), MAT_PIEL, 0, 0, -largo));   // yema
+      const uña = malla(new THREE.BoxGeometry(grosor * 1.3, 0.002, largo * 0.55), new THREE.MeshStandardMaterial({ color: 0xe0b8a8, roughness: 0.3 }), 0, grosor * 0.85, -largo * 0.7);
+      art.add(uña);
+    }
+    const siguiente = new THREE.Group(); siguiente.position.z = -largo; art.add(siguiente);
+    padre = siguiente;
+  });
+  return raiz;
+}
+
+function brazoJugador(x, y, z, giro, conLinterna) {
+  const b = new THREE.Group();
+  // manga del uniforme, con su parche de "SEGURIDAD" (un escudito amarillo)
+  const m = manga(0.42, 0.05);
+  m.position.z = 0.22;
+  b.add(m);
+  const parche = malla(new THREE.CircleGeometry(0.018, 6), new THREE.MeshStandardMaterial({ color: 0xb89a30, roughness: 0.6 }), conLinterna ? 0.054 : -0.054, 0.012, 0.1);
+  parche.rotation.y = conLinterna ? Math.PI / 2 : -Math.PI / 2;
+  b.add(parche);
+  const puño = malla(new THREE.CylinderGeometry(0.047, 0.047, 0.035, 16), MAT_PUÑO, 0, 0, -0.2);
+  puño.rotation.x = Math.PI / 2;
+  b.add(puño);
+  // muñeca y palma (redondeadas)
+  const muñeca = malla(new THREE.CylinderGeometry(0.03, 0.034, 0.06, 14), MAT_PIEL, 0, 0, -0.235);
+  muñeca.rotation.x = Math.PI / 2;
+  b.add(muñeca);
+  const palma = malla(new THREE.SphereGeometry(0.045, 18, 14), MAT_PIEL, 0, -0.004, -0.29);
+  palma.scale.set(1.05, 0.55, 1.3);
+  b.add(palma);
+
+  if (conLinterna) {
+    // ---- la linterna ----
+    const l = new THREE.Group();
+    l.position.set(-0.004, 0.03, -0.3);
+    const cuerpo = malla(new THREE.CylinderGeometry(0.024, 0.024, 0.2, 18), MAT_ALUMINIO, 0, 0, 0);
+    cuerpo.rotation.x = Math.PI / 2;
+    l.add(cuerpo);
+    for (let i = 0; i < 6; i++) {   // estrías para agarrar
+      const anillo = malla(new THREE.TorusGeometry(0.0245, 0.002, 6, 18), MAT_GOMA, 0, 0, -0.06 + i * 0.016);
+      l.add(anillo);
+    }
+    const cabeza = malla(new THREE.CylinderGeometry(0.036, 0.026, 0.055, 22), MAT_ALUMINIO, 0, 0, -0.125);
+    cabeza.rotation.x = Math.PI / 2;
+    l.add(cabeza);
+    const aro = malla(new THREE.TorusGeometry(0.035, 0.004, 8, 24), MAT.cromado, 0, 0, -0.152);
+    l.add(aro);
+    const lente = malla(new THREE.CircleGeometry(0.033, 22), lenteLinterna, 0, 0, -0.153);
+    lente.rotation.y = Math.PI;
+    l.add(lente);
+    const tapa = malla(new THREE.CylinderGeometry(0.022, 0.024, 0.02, 16), MAT_GOMA, 0, 0, 0.108);
+    tapa.rotation.x = Math.PI / 2;
+    l.add(tapa);
+    l.add(caja(0.012, 0.008, 0.018, MAT_GOMA, 0, 0.025, -0.07));   // botón
+    b.add(l);
+    // dedos que rodean la linterna (se doblan hacia abajo por encima)
+    [-0.33, -0.312, -0.294, -0.276].forEach((dz, i) => {
+      const d = dedo([0.03, 0.024, 0.02], 0.0095 - i * 0.0006, [0.55, -1.15, -1.0], 'x');
+      d.rotation.y = Math.PI / 2;   // los dedos pasan por encima de la linterna y la rodean
+      d.position.set(0.028, 0.032, dz);
+      b.add(d);
+    });
+    const pulgar = dedo([0.03, 0.025], 0.011, [0.3, 0.5], 'x');
+    pulgar.position.set(-0.03, 0.006, -0.27);
+    pulgar.rotation.y = 0.35;
+    b.add(pulgar);
+  } else {
+    // ---- mano izquierda, relajada ----
+    [-0.024, -0.008, 0.008, 0.024].forEach((dx, i) => {
+      const d = dedo([0.03 - Math.abs(i - 1.5) * 0.003, 0.024, 0.02], 0.0092, [-0.35, -0.6, -0.5], 'x');
+      d.position.set(dx, 0, -0.33);
+      d.rotation.x = -0.15;
+      b.add(d);
+    });
+    const pulgar = dedo([0.03, 0.025], 0.011, [0.2, 0.3], 'x');
+    pulgar.position.set(0.04, 0.004, -0.28);
+    pulgar.rotation.y = -0.6;
+    b.add(pulgar);
+    // un reloj en la muñeca, con números verdes
+    const correa = malla(new THREE.TorusGeometry(0.034, 0.007, 8, 20), MAT_GOMA, 0, 0, -0.232);
+    b.add(correa);
+    b.add(caja(0.026, 0.008, 0.03, MAT_ALUMINIO, 0, 0.037, -0.232));
+    b.add(caja(0.02, 0.002, 0.022, brilla(0x40ff70, 1.5), 0, 0.0415, -0.232));
+  }
+  b.position.set(x, y, z);
+  b.rotation.y = giro;
+  brazos.add(b);
+  return b;
+}
+const brazoDerecho = brazoJugador(0.2, -0.24, -0.12, 0.08, true);
+const brazoIzquierdo = brazoJugador(-0.24, -0.29, -0.08, -0.2, false);
+brazoIzquierdo.rotation.z = 0.35;
+brazos.traverse(o => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = false; } });
+// la luz sale de la linterna que llevas en la mano
+linterna.position.set(0.19, -0.2, -0.6);
+linterna.target.position.set(0.16, -0.12, -2);
+// una lucecita suave que ilumina tus manos (si no, se verían negras en la oscuridad)
+const luzManos = new THREE.PointLight(0xffe0c0, 0.12, 0.8, 2);
+luzManos.position.set(0.05, 0.05, -0.2);
+camara.add(luzManos);
+
+// mover los brazos al andar (se balancean un poco)
+function moverBrazos(dt, moviendo, corriendo) {
+  lenteLinterna.emissiveIntensity = linterna.visible ? 6 : 0;
+  const k = moviendo ? (corriendo ? 13 : 8.5) : 1.5, fuerza = moviendo ? (corriendo ? 0.03 : 0.015) : 0.004;
+  brazos.position.x = Math.sin(tiempo * k / 2) * fuerza;
+  brazos.position.y = -Math.abs(Math.sin(tiempo * k / 2)) * fuerza - (corriendo ? 0.04 : 0);
+  brazoIzquierdo.position.z = -0.08 + Math.sin(tiempo * k / 2) * fuerza * 1.5;
+}
+
+// =====================================================
+//  TE DESPIERTAS EN EL SUELO… (sale después de la historia)
+// =====================================================
+let despertarT = 0;
+const suave = (a, b, x) => { const k = Math.max(0, Math.min(1, (x - a) / (b - a))); return k * k * (3 - 2 * k); };
+function empezarDespertar() {
+  estado = 'despertar';
+  despertarT = 0;
+  giroH = Math.PI; giroV = -0.12;
+  jugador.x = inicio.x; jugador.z = inicio.z;
+  $('parpados').classList.remove('oculto');
+  $('hud').style.opacity = 0;
+  sonido(3600, 3500, 4.5, 0.05, 'sine');                         // pitido en los oídos
+  [0.4, 1.5, 2.6, 3.5].forEach(t => setTimeout(sonidoLatido, t * 1000));
+  setTimeout(() => sonido(500, 250, 0.5, 0.15, 'sawtooth'), 3600);   // ¡aaah! (coges aire)
+}
+function actualizarDespertar(dt) {
+  despertarT += dt;
+  const T = despertarT;
+  // 1) los ojos se abren y se cierran… hasta que se quedan abiertos
+  let abiertos = 0;
+  if (T > 1.2 && T < 3.6) { const k = (T - 1.2) / 2.4; abiertos = Math.max(0, Math.sin(k * Math.PI * 3.5 - Math.PI / 2) * 0.5 + 0.5) * Math.min(1, k * 1.5); }
+  else if (T >= 3.6) abiertos = 1;
+  $('parpadoArriba').style.transform = `translateY(${-abiertos * 100}%)`;
+  $('parpadoAbajo').style.transform = `translateY(${abiertos * 100}%)`;
+  // 2) todo se ve borroso al principio
+  const borroso = T < 3.6 ? 9 * (1 - Math.max(0, T - 1.2) / 2.4) + 2 : 2 * (1 - suave(3.6, 5.4, T));
+  renderer.domElement.style.filter = borroso > 0.15 ? `blur(${borroso.toFixed(1)}px)` : '';
+  // 3) estás tirado en el suelo mirando al techo… y te levantas
+  const arriba = suave(3.7, 5.6, T);
+  camara.position.set(jugador.x, 0.3 + arriba * 1.32, jugador.z - (1 - arriba) * 1.1);
+  camara.rotation.set(1.35 * (1 - arriba) + giroV * arriba + Math.sin(T * 1.3) * 0.03 * (1 - arriba), giroH + 0.3 * (1 - arriba), 0.45 * (1 - arriba));
+  // los brazos aparecen al apoyarte para levantarte
+  brazos.position.y = -0.35 * (1 - suave(3.4, 4.4, T)) + Math.sin(suave(3.7, 5.6, T) * Math.PI) * 0.06;
+  brazos.rotation.x = Math.sin(suave(3.7, 5.6, T) * Math.PI) * -0.35;
+  lenteLinterna.emissiveIntensity = linterna.visible ? 6 : 0;
+  if (T >= 6) {
+    estado = 'jugando';
+    brazos.rotation.x = 0;
+    renderer.domElement.style.filter = '';
+    $('parpados').classList.add('oculto');
+    $('hud').style.opacity = 1;
+  }
+}
+
+// =====================================================
+//  MISIÓN: LAS PISTAS DE LUCÍA
+//  noche = la noche en la que aparece · x, z = dónde está · tipo = qué objeto es
+//  ✏️ ¡Puedes cambiar los textos o el nombre de la doctora!
+// =====================================================
+const DOCTORA = 'Dra. Castell';
+const PISTAS = [
+  { id: 1, noche: 1, x: 40.5, z: 15, tipo: 'pulsera', titulo: 'La pulsera de Lucía',
+    texto: `Una pulsera de hospital de plástico.<br><b>${NIÑA} M. · 8 años · Habitación 12 · Ingreso: 13/03/1987</b><br><br>Entró por una apendicitis. Una operación fácil… de las que se curan en dos días.` },
+  { id: 2, noche: 1, x: 60, z: 6, tipo: 'dibujo', titulo: 'Un dibujo de Lucía',
+    texto: `Un dibujo hecho con ceras: una mujer con bata blanca y los ojos pintados de rojo.<br><br>Debajo, con letra de niña:<br><i>"No me gusta la doctora. Viene por las noches y me pincha. Mi muñeco tiene miedo."</i>` },
+  { id: 3, noche: 1, x: 90, z: 38, tipo: 'ficha', titulo: 'La ficha médica',
+    texto: `Ficha de la paciente ${NIÑA} M.<br>Médica responsable: <b>${DOCTORA}</b>.<br><br>Alguien ha tachado la palabra <s>apendicitis</s> y ha escrito encima, en rojo:<br><b style="color:#a00">PROYECTO SUEÑO</b>` },
+  { id: 4, noche: 2, x: 6, z: 18, tipo: 'diario', titulo: 'El diario de la doctora (1)',
+    texto: `<i>"El Proyecto Sueño funcionará. Con mi medicina, los niños dejarán de sentir miedo y dolor para siempre. El director no lo aprobaría… así que lo haré de noche, en secreto."</i><br><br>— ${DOCTORA}` },
+  { id: 5, noche: 2, x: 93, z: 17, tipo: 'tarjeta', titulo: 'Instrucciones del robot',
+    texto: `Una tarjeta metálica del robot enfermero R-7:<br><br><b>ORDEN 1:</b> obedecer SOLO a la ${DOCTORA}.<br><b>ORDEN 2:</b> llevar a los pacientes al quirófano de noche.<br><b>ORDEN 3:</b> no dejar salir a nadie.` },
+  { id: 6, noche: 2, x: 62, z: 31, tipo: 'nota', titulo: 'Una nota del guardia',
+    texto: `<i>"Me llamo Tomás, soy el guardia de noche. Hoy he oído llorar a una niña en el quirófano, a las 3 de la mañana. La doctora me ha dicho que no era nada. Miente. Mañana iré a la policía."</i>` },
+  { id: 7, noche: 3, x: 30, z: 25, tipo: 'boton', titulo: 'Un botón negro',
+    texto: `Un botón negro, igual que el ojo del muñeco de ${NIÑA}.<br><br>Está caliente… como si alguien lo hubiera tenido en la mano hace un segundo.<br><br>¿El muñeco… está buscando a su dueña?` },
+  { id: 8, noche: 3, x: 72, z: 50, tipo: 'carta', titulo: 'La carta de la madre',
+    texto: `<i>"Mi hija ${NIÑA} no ha vuelto a casa. El hospital dice que se escapó por la noche. No es verdad: ella nunca se iría sin su muñeco. Por favor, si alguien sabe algo, que me ayude."</i><br><br>— Carmen, la madre de ${NIÑA}` },
+  { id: 9, noche: 4, x: 30, z: 50, tipo: 'placa', titulo: 'La placa de Tomás',
+    texto: `La placa del guardia <b>Tomás Ruiz</b>, tirada en la morgue.<br><br>Nunca llegó a hablar con la policía…<br><br>Ahora ya sabes quién es la <b>sombra con bata</b> que ves por las cámaras.` },
+  { id: 10, noche: 4, x: 75, z: 6, tipo: 'cinta', titulo: 'Una cinta de vídeo',
+    texto: `Una cinta de las cámaras de seguridad: <b>14/03/1987 · 3:00 AM</b>.<br><br>Se ve a la doctora y al robot empujando una camilla hacia la morgue.<br>Detrás de ellos, Tomás los sigue con la linterna…<br>La imagen se corta.` },
+  { id: 11, noche: 5, x: 28, z: 6, tipo: 'diario', titulo: 'El diario de la doctora (última página)',
+    texto: `<i>"${NIÑA} no despertó. Nadie debe saberlo nunca. Si alguien entra en mi hospital, no saldrá. Yo también me quedaré aquí… para siempre."</i>` },
+  { id: 12, noche: 5, x: 6, z: 38, tipo: 'colgante', titulo: 'El colgante de Lucía',
+    texto: `Un colgante con una foto pequeñita: ${NIÑA} y su madre, sonriendo.<br><br>Ya lo sabes todo. Si sobrevives a esta noche, contarás la verdad… y ${NIÑA} y Tomás por fin podrán descansar.` },
+];
+
+// ---------- 88 pistas más, repartidas por todo el hospital ----------
+// [noche, tipo de objeto, título, texto]
+const HOSPITAL = 'Hospital San Lázaro';
+const MAS_PISTAS = [
+  // --- Noche 1: algo raro pasa aquí ---
+  [1, 'foto', 'Foto de la entrada', `Una foto del ${HOSPITAL} en 1987, lleno de gente sonriendo. Nadie diría que algo malo pasaba aquí.`],
+  [1, 'periodico', 'Recorte de periódico', `«El ${HOSPITAL} estrena una moderna sala infantil». En la foto, la ${DOCTORA} sonríe junto a un robot enfermero.`],
+  [1, 'juguete', 'Un cubo de juguete', `Un cubo de madera con una letra pintada: <b>L</b>. L de ${NIÑA}.`],
+  [1, 'nota', 'Nota de una enfermera', '«Comprar: café, pilas para la linterna… y NO quedarse sola cerca del quirófano por la noche.»'],
+  [1, 'ficha', 'Turnos de noche', `Un cuadrante de turnos. En el turno de noche del quirófano siempre aparece el mismo nombre: <b>${DOCTORA}</b>.`],
+  [1, 'dibujo', 'Dibujo de otro niño', 'Un dibujo infantil: un robot enorme con ojos amarillos. Alguien ha escrito: «el robot no me deja dormir».'],
+  [1, 'nota', 'Escrito en la pared', 'Con rotulador, junto a un enchufe: <i>«Si oyes una caja de música, NO la sigas.»</i>'],
+  [1, 'llave', 'Una llave pequeña', 'Una llave con una etiqueta: «Archivo». Alguien la escondió aquí con prisa.'],
+  [1, 'frasco', 'Un frasco vacío', 'Un frasco de medicina sin nombre. Solo tiene una pegatina: <b>PS-1</b>. ¿PS… de Proyecto Sueño?'],
+  [1, 'foto', 'Foto de la sala de niños', `La sala de niños llena de camas. En una de ellas, una niña abraza un muñeco de trapo.`],
+  [1, 'carta', 'Una postal sin enviar', `<i>«Mamá, aquí la comida está mala pero las enfermeras son buenas. Te quiero. ${NIÑA}.»</i>`],
+  [1, 'tarjeta', 'Tarjeta de visita', `«${DOCTORA} — Especialista en sueño infantil». Por detrás, a mano: <i>«Paciente perfecta: L.M.»</i>`],
+  [1, 'nota', 'Queja de un padre', '«Mi hijo dice que por las noches le despiertan para darle "vitaminas". ¿Quién lo ha permitido?»'],
+  [1, 'juguete', 'Un osito sin ojos', 'Un osito de peluche al que le han quitado los ojos. Está lleno de polvo… y huele a medicina.'],
+  [1, 'grabadora', 'Una grabadora rota', 'Al darle al botón solo se oye una respiración… y, muy lejos, una caja de música.'],
+  [1, 'ficha', 'Lista de pacientes', `La lista de la sala de niños: cinco nombres. Al lado de cuatro pone «curado». Al lado de ${NIÑA}… nada.`],
+  [1, 'periodico', 'Anuncio de trabajo', '«Se busca guardia de seguridad para el turno de noche. Urgente. Buen sueldo.» Así llegaste tú aquí.'],
+  // --- Noche 2: la doctora y el robot ---
+  [2, 'diario', 'Notas de la doctora: día 1', '<i>«Los niños tienen miedo por la noche. Si duermen profundamente, no sentirán nada. Mi medicina lo conseguirá.»</i>'],
+  [2, 'diario', 'Notas de la doctora: día 9', '<i>«Funciona. Algunos niños duermen veinte horas seguidas. El director no debe enterarse.»</i>'],
+  [2, 'frasco', 'Frasco PS-2', 'Un frasco más grande: <b>«PS-2 — dosis doble. NO USAR.»</b> Está vacío.'],
+  [2, 'tarjeta', 'Manual del robot (página 1)', '«R-7, asistente de enfermería. Puede levantar a un adulto sin ayuda. Nunca se cansa. Nunca duerme.»'],
+  [2, 'tarjeta', 'Manual del robot (página 4)', '«Para cambiar las órdenes del R-7 hace falta la llave maestra.» Alguien ha escrito: <i>«la tiene ella»</i>.'],
+  [2, 'nota', 'Parte de mantenimiento', '«El R-7 no obedece al técnico. Solo escucha a la doctora. Hay que apagarlo.» Nadie lo apagó.'],
+  [2, 'foto', 'Foto del robot', 'El robot R-7 el día que llegó, con un lazo rojo. Detrás, la doctora es la única que no sonríe.'],
+  [2, 'ficha', 'Informe de Marcos', '«Paciente: Marcos, 7 años. Se despertó gritando que un robot lo llevaba en brazos por el pasillo.»'],
+  [2, 'carta', 'Carta al director', `Una enfermera escribe: «La ${DOCTORA} cierra el quirófano con llave todas las noches. ¿Qué hace allí dentro?»`],
+  [2, 'nota', 'Respuesta del director', `«La ${DOCTORA} es nuestra mejor médica. No quiero oír ni una queja más.» — El director`],
+  [2, 'juguete', 'Un coche de juguete', 'Un cochecito rojo. Alguien jugaba con él en el pasillo… hasta que dejó de hacerlo.'],
+  [2, 'llave', 'Llave del quirófano', 'Una llave con etiqueta roja: <b>«QUIRÓFANO — solo Dra. C.»</b>'],
+  [2, 'grabadora', 'Mensaje de voz', 'Una voz de mujer, muy tranquila: <i>«Duerme, pequeña. Cuando despiertes, ya no tendrás miedo de nada.»</i>'],
+  [2, 'periodico', 'Premio a la doctora', `«La ${DOCTORA} recibe un premio por su trabajo con niños». En la foto lleva la misma bata que ves por las cámaras.`],
+  [2, 'dibujo', 'Dibujo de Lucía: el robot', `${NIÑA} dibujó al robot con lágrimas en los ojos. Debajo: <i>«Él tampoco quiere hacerlo.»</i>`],
+  [2, 'nota', 'Una hoja arrugada', '<i>«3:00 AM. Quirófano. Traer a L.M. Que el guardia no se entere.»</i>'],
+  [2, 'cinta', 'Cinta: el robot', 'Una cinta de vídeo: el robot recorre los pasillos de madrugada, empujando una camilla vacía.'],
+  // --- Noche 3: el muñeco y la madre ---
+  [3, 'boton', 'Otro botón negro', 'Un segundo botón negro. El muñeco perdió los dos ojos… y se ha cosido uno nuevo.'],
+  [3, 'juguete', 'Un hilo de lana roja', 'Un trozo de lana roja, igual que el pelo del muñeco. Estaba enganchado en una puerta.'],
+  [3, 'foto', 'Lucía y su muñeco', `${NIÑA} con su muñeco el día de su cumpleaños. Los dos llevan un gorrito de fiesta.`],
+  [3, 'carta', 'Carta de la madre (2)', `<i>«Le he cosido un muñeco a ${NIÑA} para que no esté sola en el hospital. Se llama <b>Botones</b>.»</i>`],
+  [3, 'nota', 'La etiqueta del muñeco', `Una etiqueta cosida a mano: <i>«Me llamo Botones. Cuido de ${NIÑA}.»</i>`],
+  [3, 'ficha', 'Objetos perdidos', '«1 muñeco de trapo, sala de niños. Nadie lo ha reclamado.»'],
+  [3, 'dibujo', 'Dibujo de Botones', `${NIÑA} dibujó a su muñeco con una espada. Debajo: <i>«Botones me protege de la doctora.»</i>`],
+  [3, 'carta', 'Carta a la policía', `La madre de ${NIÑA} escribió a la policía: «El hospital me miente». La respuesta: «No hay pruebas».`],
+  [3, 'periodico', 'Niña desaparecida', `«Desaparece una niña de 8 años del ${HOSPITAL}. El hospital asegura que se escapó por la noche.»`],
+  [3, 'nota', 'Lo que vio una enfermera', '«Ayer el muñeco estaba en su cama. Hoy estaba en la otra punta del hospital. Nadie lo ha movido.»'],
+  [3, 'juguete', 'Aguja e hilo', 'Una aguja de coser con hilo negro. Como la que alguien usó para coserle la boca al muñeco.'],
+  [3, 'grabadora', 'Grabación: la sala de niños', 'Se oye a niños durmiendo. Luego, pasos pequeños y suaves… como los de un muñeco de trapo.'],
+  [3, 'foto', 'Una foto borrosa', 'Una foto de las cámaras: algo pequeño, con vestido morado, mira fijamente a la cámara.'],
+  [3, 'frasco', 'Un frasco roto', 'Un frasco de PS-2 roto. Al lado hay huellas pequeñas… de tela.'],
+  [3, 'nota', 'Un dibujo en la pared', 'A la altura de un niño, alguien ha dibujado un corazón y una palabra: <b>MAMÁ</b>.'],
+  [3, 'carta', 'Carta de Lucía', `<i>«Mamá, si no vuelvo, Botones te buscará. Él sabe el camino.»</i> — ${NIÑA}`],
+  [3, 'ficha', 'Informe de Lucía', '«Paciente L.M.: muy despierta, hace demasiadas preguntas. Ha visto los frascos. Aumentar la dosis.»'],
+  [3, 'llave', 'Llave de la sala de niños', 'La llave de la sala de niños. Estaba en el bolsillo de un vestido de muñeco.'],
+  [3, 'juguete', 'Un gorrito de fiesta', 'El gorrito de la foto del cumpleaños. Está aplastado, como si alguien lo hubiera abrazado mucho tiempo.'],
+  // --- Noche 4: Tomás ---
+  [4, 'nota', 'Diario de Tomás: lunes', '<i>«Primera semana como guardia. El hospital de noche da miedo, pero la gente es maja. Menos la doctora.»</i>'],
+  [4, 'nota', 'Diario de Tomás: miércoles', `<i>«He conocido a una niña, ${NIÑA}. Me ha regalado un dibujo. Es muy lista.»</i>`],
+  [4, 'nota', 'Diario de Tomás: jueves', `<i>«${NIÑA} dice que la doctora le da medicinas por la noche. Voy a vigilar el quirófano.»</i>`],
+  [4, 'foto', 'Tomás y Lucía', 'Un guardia joven con gorra y una niña con un muñeco, sonriendo en la sala de niños.'],
+  [4, 'cinta', 'Cinta: Tomás vigila', 'Tomás escondido detrás de una camilla mientras el robot entra en el quirófano.'],
+  [4, 'grabadora', 'Grabación de Tomás', `<i>«Si alguien encuentra esto: la doctora está haciendo pruebas con los niños. Voy a sacar a ${NIÑA} de aquí.»</i>`],
+  [4, 'llave', 'El llavero de Tomás', 'Un llavero con un perrito de plástico. Se le cayó corriendo por el pasillo.'],
+  [4, 'ficha', 'Ficha de Tomás', 'Ficha del personal: Tomás Ruiz, guardia de noche. En rojo: <b>«DESPEDIDO»</b>. Fecha: 14 de marzo.'],
+  [4, 'carta', 'Carta para Tomás', '<i>«Hijo, ¿por qué no contestas al teléfono? Llevas tres días sin venir a casa.»</i> — Mamá'],
+  [4, 'tarjeta', 'Pase de la morgue', 'Una tarjeta para abrir la morgue, doblada, como si alguien la hubiera usado para forzar la puerta.'],
+  [4, 'periodico', 'Guardia desaparecido', `«Desaparece un guardia del ${HOSPITAL}. La policía cree que se ha ido del país.»`],
+  [4, 'juguete', 'Una linterna rota', 'Una linterna como la tuya, rota. En el mango hay unas letras grabadas: <b>T.R.</b>'],
+  [4, 'nota', 'Última nota de Tomás', `<i>«Esta noche saco a ${NIÑA}. Si el robot nos ve, correré hacia la morgue para despistarlo.»</i>`],
+  [4, 'dibujo', 'El regalo de Lucía', 'El dibujo que Lucía le regaló a Tomás: un guardia con capa de superhéroe. Pone: <i>«Mi héroe»</i>.'],
+  [4, 'placa', 'Una chapa arañada', 'Una chapa con el escudo de seguridad, igual que la de tu uniforme. Está llena de arañazos.'],
+  [4, 'grabadora', 'Ruido en la morgue', 'Una puerta metálica que se cierra. Silencio. Y luego… alguien que golpea desde dentro.'],
+  [4, 'foto', 'La sombra', 'Una foto de la morgue: una sombra con bata y gorra. No es la doctora. Es más alta.'],
+  // --- Noche 5: la verdad ---
+  [5, 'diario', 'Notas de la doctora: día 30', '<i>«La niña lo sabe todo. Y el guardia también. No puedo dejar que hablen.»</i>'],
+  [5, 'diario', 'Notas de la doctora: aquella noche', `<i>«Le he dado a ${NIÑA} la dosis PS-2. Solo quería que durmiera tranquila…»</i>`],
+  [5, 'ficha', 'Informe final', '«Paciente L.M. — No despierta.» Debajo, con letra temblorosa: <i>«Lo siento.»</i>'],
+  [5, 'frasco', 'El último frasco', 'El frasco de PS-2 de aquella noche. Todavía tiene las huellas del guante de la doctora.'],
+  [5, 'cinta', 'Cinta: 14 de marzo, 3:15', 'El robot se queda quieto en el pasillo. Por primera vez, no obedece. La doctora le grita. Él no se mueve.'],
+  [5, 'tarjeta', 'Una orden tachada', `Una tarjeta del robot con la ORDEN 3 tachada. Al lado, grabado con algo afilado: <b>«PROTEGER A ${NIÑA.toUpperCase()}»</b>.`],
+  [5, 'nota', 'El director lo sabía', '«Lo que pasó el 14 de marzo no debe salir de aquí. Cerrad la sala infantil.» — El director'],
+  [5, 'periodico', 'El hospital cierra', `«El ${HOSPITAL} cierra por "problemas económicos".» Nadie habló de ${NIÑA}.`],
+  [5, 'carta', 'Carta de la doctora', '<i>«A quien encuentre esto: yo solo quería ayudar a los niños. Me equivoqué. Ahora no puedo salir de aquí.»</i>'],
+  [5, 'llave', 'La llave maestra', 'La llave maestra del robot. Con ella, cualquiera podría darle órdenes nuevas… o liberarlo.'],
+  [5, 'foto', 'Foto del personal', 'Foto de todo el personal del hospital. Alguien le ha tachado la cara a la doctora con rotulador rojo.'],
+  [5, 'juguete', 'La caja de música', `La caja de música de ${NIÑA}. Si le das cuerda, toca la melodía que oyes por los pasillos.`],
+  [5, 'grabadora', 'Una voz de niña', '<i>«Ya no tengo miedo. Botones y Tomás están conmigo.»</i>'],
+  [5, 'nota', 'Mensaje en el espejo', 'Escrito en un espejo empañado: <b>GRACIAS, GUARDIA</b>.'],
+  [5, 'dibujo', 'El último dibujo', `Un dibujo nuevo, con ceras brillantes: ${NIÑA}, Botones y Tomás cogidos de la mano, saliendo del hospital hacia el sol.`],
+  [5, 'ficha', 'Tu ficha', `Una ficha con TU nombre: «Nuevo guardia de noche. Contratado por: ${DOCTORA}.» ¿Por qué te contrató ella?`],
+  [5, 'carta', 'Una carta para ti', '<i>«Si estás leyendo esto, eres el único que puede contar la verdad. Aguanta hasta las 6.»</i> — T.R.'],
+  [5, 'periodico', 'Un periódico de mañana', `Un periódico con la fecha de mañana: «La verdad del ${HOSPITAL} sale a la luz gracias a un guardia de seguridad».`],
+];
+// las 12 primeras son las pistas clave de la historia ⭐
+PISTAS.forEach(p => { p.clave = true; });
+// las demás se esconden por el hospital (siempre en los mismos sitios)
+(() => {
+  let semilla = 1987;
+  const azarFijo = () => { semilla = (semilla * 16807) % 2147483647; return semilla / 2147483647; };
+  const casillas = [];
+  for (let f = 0; f < filas; f++) for (let c = 0; c < columnas; c++) if (MAPA[f][c] !== '#' && MAPA[f][c] !== 'I' && MAPA[f][c] !== 'D' && !enSeguridad(f, c)) casillas.push([f, c]);
+  MAS_PISTAS.forEach(([n, tipo, titulo, texto], i) => {
+    const [f, c] = casillas[Math.floor(azarFijo() * casillas.length)];
+    const p = centro(f, c);
+    PISTAS.push({ id: 13 + i, noche: n, x: p.x + (azarFijo() - 0.5) * 2.6, z: p.z + (azarFijo() - 0.5) * 2.6, tipo, titulo, texto, clave: false });
+  });
+})();
+
+// ¿qué pistas has encontrado ya? (se guardan en el navegador)
+function pistasEncontradas() {
+  try { return JSON.parse(localStorage.getItem('hospitalMaldito_pistas')) || []; } catch (e) { return []; }
+}
+function guardarPista(id) {
+  try { const p = pistasEncontradas(); if (!p.includes(id)) { p.push(id); localStorage.setItem('hospitalMaldito_pistas', JSON.stringify(p)); } } catch (e) {}
+}
+
+// ---------- los objetos 3D de cada pista ----------
+function papelCon(dibujo) {
+  const c = lienzo(256), g = c.getContext('2d');
+  g.fillStyle = '#e2dcc6'; g.fillRect(0, 0, 256, 256);
+  manchas(g, 256, 12, '120,100,60', 8, 40, 0.35);
+  if (dibujo) {
+    g.fillStyle = '#ddd'; g.fillRect(70, 60, 116, 150);
+    g.fillStyle = '#c8303a'; g.fillRect(108, 70, 12, 10); g.fillRect(136, 70, 12, 10);   // ojos rojos
+    g.strokeStyle = '#222'; g.lineWidth = 4; g.strokeRect(70, 60, 116, 150);
+  } else {
+    g.strokeStyle = '#2a2a3a'; g.lineWidth = 3;
+    for (let i = 0; i < 9; i++) { g.beginPath(); for (let x = 24; x < 232; x += 8) g.lineTo(x, 30 + i * 24 + Math.sin(x * 0.3 + i) * 3); g.stroke(); }
+  }
+  return new THREE.MeshStandardMaterial({ map: texturaDe(c, null, true), roughness: 0.9, side: THREE.DoubleSide });
+}
+function objetoPista(tipo) {
+  const g = new THREE.Group();
+  const plano = (an, al, mat) => { const m = malla(new THREE.PlaneGeometry(an, al), mat, 0, 0.006, 0); m.rotation.x = -Math.PI / 2; return m; };
+  if (tipo === 'pulsera') {
+    const p = malla(new THREE.TorusGeometry(0.045, 0.008, 8, 24), new THREE.MeshStandardMaterial({ color: 0xf0f0f0, roughness: 0.4 }), 0, 0.01, 0);
+    p.rotation.x = Math.PI / 2; g.add(p);
+    g.add(caja(0.035, 0.004, 0.02, new THREE.MeshStandardMaterial({ color: 0x5a8ad0, roughness: 0.4 }), 0.04, 0.012, 0));
+  } else if (tipo === 'dibujo') g.add(plano(0.3, 0.22, papelCon(true)));
+  else if (['ficha', 'nota', 'carta'].includes(tipo)) g.add(plano(0.21, 0.29, papelCon(false)));
+  else if (tipo === 'diario') {
+    g.add(caja(0.16, 0.035, 0.22, new THREE.MeshStandardMaterial({ color: 0x4a1a14, roughness: 0.7 }), 0, 0.018, 0));
+    g.add(caja(0.15, 0.03, 0.21, MAT.sabana, 0.006, 0.018, 0));
+  } else if (tipo === 'tarjeta') g.add(caja(0.09, 0.004, 0.13, MAT.cromado, 0, 0.003, 0));
+  else if (tipo === 'boton') {
+    const b = malla(new THREE.CylinderGeometry(0.025, 0.025, 0.01, 16), new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.1 }), 0, 0.006, 0);
+    g.add(b);
+  } else if (tipo === 'placa') {
+    g.add(caja(0.08, 0.005, 0.05, new THREE.MeshStandardMaterial({ color: 0xc8a840, metalness: 0.8, roughness: 0.3 }), 0, 0.004, 0));
+  } else if (tipo === 'cinta') {
+    g.add(caja(0.19, 0.025, 0.1, new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.5 }), 0, 0.013, 0));
+    g.add(caja(0.12, 0.002, 0.05, MAT.sabana, 0, 0.027, 0));
+  } else if (tipo === 'foto') {
+    const f = malla(new THREE.PlaneGeometry(0.1, 0.12), new THREE.MeshStandardMaterial({ color: 0xeeeeea, roughness: 0.4, side: THREE.DoubleSide }), 0, 0.005, 0);
+    f.rotation.x = -Math.PI / 2; g.add(f);
+    const imagen = malla(new THREE.PlaneGeometry(0.085, 0.085), new THREE.MeshStandardMaterial({ color: 0x5a4a3a, roughness: 0.3 }), 0, 0.006, -0.008);
+    imagen.rotation.x = -Math.PI / 2; g.add(imagen);
+  } else if (tipo === 'periodico') {
+    g.add(plano(0.36, 0.26, papelCon(false)));
+  } else if (tipo === 'juguete') {
+    g.add(caja(0.07, 0.07, 0.07, new THREE.MeshStandardMaterial({ color: [0xa03030, 0x3070a0, 0xd0a020][Math.floor(Math.random() * 3)], roughness: 0.5 }), 0, 0.035, 0));
+  } else if (tipo === 'llave') {
+    const oro = new THREE.MeshStandardMaterial({ color: 0xb89a40, metalness: 0.9, roughness: 0.3 });
+    const aro = malla(new THREE.TorusGeometry(0.018, 0.005, 6, 16), oro, 0, 0.005, 0);
+    aro.rotation.x = Math.PI / 2; g.add(aro);
+    g.add(caja(0.06, 0.006, 0.01, oro, 0.045, 0.005, 0));
+  } else if (tipo === 'frasco') {
+    const f = malla(new THREE.CylinderGeometry(0.025, 0.025, 0.09, 12), new THREE.MeshStandardMaterial({ color: 0x8a5a20, roughness: 0.1, transparent: true, opacity: 0.8 }), 0, 0.025, 0);
+    f.rotation.z = Math.PI / 2; g.add(f);
+  } else if (tipo === 'grabadora') {
+    g.add(caja(0.12, 0.035, 0.08, new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.5 }), 0, 0.018, 0));
+    g.add(caja(0.05, 0.004, 0.03, MAT.cromado, 0.02, 0.037, 0));
+  } else if (tipo === 'colgante') {
+    const cadena = malla(new THREE.TorusGeometry(0.06, 0.003, 6, 30), MAT.cromado, 0, 0.004, 0);
+    cadena.rotation.x = Math.PI / 2; g.add(cadena);
+    g.add(malla(new THREE.SphereGeometry(0.018, 12, 8), new THREE.MeshStandardMaterial({ color: 0xd8b040, metalness: 0.9, roughness: 0.25 }), 0.06, 0.01, 0));
+  }
+  g.rotation.y = Math.random() * 6;
+  return g;
+}
+// destello que te ayuda a ver la pista
+const texDestello = (() => {
+  const c = lienzo(64), g = c.getContext('2d');
+  const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  grad.addColorStop(0, 'rgba(255,240,200,1)'); grad.addColorStop(0.3, 'rgba(255,220,150,0.4)'); grad.addColorStop(1, 'rgba(255,200,100,0)');
+  g.fillStyle = grad; g.fillRect(0, 0, 64, 64);
+  return new THREE.CanvasTexture(c);
+})();
+for (const p of PISTAS) {
+  p.grupo = new THREE.Group();
+  p.grupo.position.set(p.x, 0, p.z);
+  p.grupo.add(objetoPista(p.tipo));
+  p.destello = new THREE.Sprite(new THREE.SpriteMaterial({ map: texDestello, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+  p.destello.scale.set(0.35, 0.35, 1);
+  p.destello.position.y = 0.08;
+  p.grupo.add(p.destello);
+  p.grupo.visible = false;
+  escena.add(p.grupo);
+}
+// enseña solo las pistas de esta noche (y las de noches anteriores que te faltan)
+function prepararPistas() {
+  const hechas = pistasEncontradas();
+  for (const p of PISTAS) p.grupo.visible = p.noche <= noche && !hechas.includes(p.id);
+  actualizarMision();
+}
+function actualizarMision() {
+  const hechas = pistasEncontradas();
+  const deEstaNoche = PISTAS.filter(p => p.noche === noche);
+  const encontradas = deEstaNoche.filter(p => hechas.includes(p.id)).length;
+  const claves = PISTAS.filter(p => p.clave && hechas.includes(p.id)).length;
+  $('mision').innerHTML = `🔍 <b>Misión:</b> encuentra las pistas de ${NIÑA} · Esta noche: ${encontradas}/${deEstaNoche.length} · ⭐ Clave: ${claves}/12 · Total: ${hechas.length}/${PISTAS.length}`;
+}
+
+// ¿estás mirando una pista de cerca?
+let pistaMirada = null;
+function revisarPistas(t) {
+  pistaMirada = null;
+  const fx = -Math.sin(giroH) * Math.cos(giroV), fy = Math.sin(giroV), fz = -Math.cos(giroH) * Math.cos(giroV);
+  for (const p of PISTAS) {
+    if (!p.grupo.visible) continue;
+    p.destello.material.opacity = 0.55 + Math.sin(t * 3 + p.id) * 0.35;   // el destello late
+    const vx = p.x - camara.position.x, vy = 0.05 - camara.position.y, vz = p.z - camara.position.z;
+    const d = Math.hypot(vx, vy, vz);
+    if (d < 2.6 && (vx * fx + vy * fy + vz * fz) / d > 0.9) pistaMirada = p;
+  }
+  if (pistaMirada) $('pista').textContent = 'Pulsa E para coger: ' + pistaMirada.titulo;
+}
+
+// coger la pista y leerla (el juego se para mientras lees)
+function abrirPista(p) {
+  guardarPista(p.id);
+  p.grupo.visible = false;
+  pistaMirada = null;
+  estado = 'leyendo';
+  $('pistaTitulo').textContent = (p.clave ? '⭐ ' : '') + p.titulo;
+  $('pistaTexto').innerHTML = p.texto;
+  $('pistaNumero').textContent = `Pista ${pistasEncontradas().length} de ${PISTAS.length}`;
+  $('pistaVista').classList.remove('oculto');
+  [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => sonido(f, f * 0.99, 0.6, 0.1, 'triangle'), i * 110));   // ¡descubrimiento!
+  actualizarMision();
+}
+function cerrarPista() {
+  $('pistaVista').classList.add('oculto');
+  estado = 'jugando';
+}
+
+// ---------- el cuaderno de pistas (en el menú) ----------
+function abrirCuaderno() {
+  const hechas = pistasEncontradas();
+  let html = `<p><b>${hechas.length}/${PISTAS.length}</b> pistas encontradas · ⭐ clave: <b>${PISTAS.filter(p => p.clave && hechas.includes(p.id)).length}/12</b></p>`;
+  for (let n = 1; n <= NOCHES.length; n++) {
+    const deLaNoche = PISTAS.filter(p => p.noche === n).sort((a, b) => (b.clave ? 1 : 0) - (a.clave ? 1 : 0));
+    html += `<h3 style="margin-top:18px">🌙 Noche ${n} (${deLaNoche.filter(p => hechas.includes(p.id)).length}/${deLaNoche.length})</h3>`;
+    html += deLaNoche.map(p => hechas.includes(p.id)
+      ? `<div class="pagina"><h3>${p.clave ? '⭐ ' : ''}${p.titulo}</h3><p>${p.texto}</p></div>`
+      : `<div class="pagina bloqueada"><h3>${p.clave ? '⭐ ' : ''}???</h3><p>Pista sin encontrar</p></div>`).join('');
+  }
+  $('cuadernoLista').innerHTML = html;
+  $('cuaderno').classList.remove('oculto');
+}
+$('botonCuaderno').addEventListener('click', abrirCuaderno);
+$('cuaderno').addEventListener('click', () => $('cuaderno').classList.add('oculto'));
+$('cuentaPistas').textContent = `${pistasEncontradas().length}/${PISTAS.length}`;
+
+// =====================================================
+//  SUSTOS SORPRESA (no te matan… solo te hacen saltar de la silla)
+// =====================================================
+const actores = {
+  sombra: crearMonstruo('silueta'),
+  doctora: crearMonstruo('doctora'),
+  nina: crearNina(true),
+  ojos: (() => { const g = new THREE.Group(); for (const s of [-1, 1]) g.add(malla(new THREE.SphereGeometry(0.04, 10, 8), brilla(0xff1010, 14), s * 0.11, 0, 0)); return g; })(),
+};
+for (const a of Object.values(actores)) {
+  const g = a.grupo || a;
+  g.visible = false;
+  g.traverse(o => { if (o.isMesh) o.castShadow = false; });
+  escena.add(g);
+}
+let proximoSusto = 0, sustoVivo = null, sacudida = 0, apagonT = 0;
+function programarSusto() { proximoSusto = CONFIG.sustosCada * (0.6 + Math.random() * 0.8); }
+programarSusto();
+
+// un sonido que te pega un bote: un acorde chirriante
+function sonidoSobresalto(fuerza = 1) {
+  for (const f of [370, 392, 523, 740, 784]) sonido(f, f * 0.94, 0.9, 0.07 * fuerza, 'sawtooth');
+  sonido(90, 40, 0.8, 0.5 * fuerza, 'sine');
+}
+// busca un sitio libre delante de un ojo, a cierta distancia (sin meterse en una pared)
+function delanteDe(ojo, distancia) {
+  const dir = new THREE.Vector3();
+  ojo.getWorldDirection(dir); dir.y = 0; dir.normalize();
+  for (let d = distancia; d >= 2.5; d -= 0.5) {
+    const x = ojo.position.x + dir.x * d, z = ojo.position.z + dir.z * d;
+    const [f, c] = celda(x, z);
+    let libre = !bloqueado(f, c);
+    for (let k = 1; k < d && libre; k += 0.5) { const [f2, c2] = celda(ojo.position.x + dir.x * k, ojo.position.z + dir.z * k); if (bloqueado(f2, c2)) libre = false; }
+    if (libre) return { x, z };
+  }
+  return null;
+}
+function ponerActor(a, sitio, mirarA, y = 0) {
+  const g = a.grupo || a;
+  g.position.set(sitio.x, y, sitio.z);
+  g.lookAt(mirarA.x, y, mirarA.z);
+  g.visible = true;
+}
+
+const SUSTOS = {
+  sombra() {   // una sombra al final de tu linterna
+    const sitio = delanteDe(camara, 7);
+    if (!sitio) return SUSTOS.golpe();
+    ponerActor(actores.sombra, sitio, camara.position);
+    sustoVivo = { actor: actores.sombra, t: 0.35 };
+    sonidoSobresalto(0.8); sacudida = 0.4;
+  },
+  apagon() {   // se va la luz… y al volver hay unos ojos
+    apagonT = 1.8;
+    sonido(120, 40, 0.4, 0.4, 'square');
+    setTimeout(() => {
+      if (estado !== 'jugando') return;
+      const sitio = delanteDe(camara, 5);
+      if (sitio) { ponerActor(actores.ojos, sitio, camara.position, 1.7); sustoVivo = { actor: actores.ojos, t: 0.5 }; sonidoSobresalto(0.7); }
+    }, 1900);
+  },
+  golpe() {    // ¡PUM! algo golpea muy fuerte cerca de ti
+    sonido(60, 25, 1, 0.9, 'sine'); sonido(200, 50, 0.4, 0.4, 'square');
+    sacudida = 1; $('flash').style.opacity = 0.15;
+    setTimeout(() => { $('flash').style.opacity = 0; }, 120);
+  },
+  nina() {     // el fantasma de Lucía, un momento…
+    const sitio = delanteDe(camara, 8);
+    if (!sitio) return SUSTOS.golpe();
+    ponerActor(actores.nina, sitio, camara.position, 0.05);
+    sustoVivo = { actor: actores.nina, t: 1.2 };
+    [988, 880, 784].forEach((f, i) => setTimeout(() => sonido(f, f, 0.8, 0.08, 'triangle'), i * 300));
+  },
+  camara() {   // ¡la doctora pegada a la cámara que estás mirando!
+    const ojo = CAMARAS[camActual].ojo, dir = new THREE.Vector3();
+    ojo.getWorldDirection(dir);
+    const g = actores.doctora.grupo;
+    g.position.set(ojo.position.x + dir.x * 1.1, ojo.position.y - 1.9, ojo.position.z + dir.z * 1.1);
+    g.lookAt(ojo.position.x, g.position.y, ojo.position.z);
+    g.visible = true;
+    sustoVivo = { actor: actores.doctora, t: 0.4 };
+    estaticaT = 0.7; sonidoSobresalto(1);
+  },
+};
+function actualizarSustos(dt) {
+  if (sacudida > 0) sacudida = Math.max(0, sacudida - dt * 2);
+  if (apagonT > 0) apagonT -= dt;
+  if (sustoVivo) {
+    sustoVivo.t -= dt;
+    if (sustoVivo.actor === actores.nina) actores.nina.grupo.position.y = 0.05 + Math.sin(tiempo * 2) * 0.05;
+    if (sustoVivo.t <= 0) { const g = sustoVivo.actor.grupo || sustoVivo.actor; g.visible = false; sustoVivo = null; }
+  }
+  if (tiempo < 20) return;   // al principio de la noche, tranquilidad
+  proximoSusto -= dt;
+  if (proximoSusto > 0) return;
+  programarSusto();
+  if (enCamaras) return SUSTOS.camara();
+  const lista = ['sombra', 'apagon', 'golpe', 'nina'];
+  SUSTOS[lista[Math.floor(Math.random() * lista.length)]]();
+}
+
+// los monstruos van más rápido y se despiertan antes en las noches difíciles
+function prepararNoche() {
+  const info = NOCHES[noche - 1];
+  for (const m of monstruos) {
+    m.velocidad = m.info.velocidad * info.rapidez;
+    m.hora = Math.max(0, m.info.hora - info.adelanto);
+  }
+  $('noche').textContent = nombreNoche(noche);
+  prepararPistas();
+}
+
+function empezarAJugar(despuesDeLaHistoria) {
+  if (!audio) { try { audio = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+  empezarZumbido();
+  if (audio && audio.state === 'suspended') audio.resume();
+  empezarAmbiente();
+  ['titulo', 'pausa', 'historia'].forEach(id => $(id).classList.add('oculto'));
+  $('hud').style.display = '';
+  estado = 'jugando';
+  if (despuesDeLaHistoria) empezarDespertar();
+  if (renderer.domElement.requestPointerLock) renderer.domElement.requestPointerLock();
+}
+crearMenu();
+$('pausa').addEventListener('click', () => empezarAJugar(false));
+$('perdido').addEventListener('click', () => location.reload());
+$('ganado').addEventListener('click', () => location.reload());
+
+// si sueltas el ratón (tecla Esc), el juego se pausa
+document.addEventListener('pointerlockchange', () => {
+  if (!document.pointerLockElement && estado === 'jugando') {
+    estado = 'pausa';
+    $('pausa').classList.remove('oculto');
+    if (audio) audio.suspend();   // en pausa, silencio
+  }
+});
+
+function asustar(m) {
+  silenciarAmbiente();
+  if (enCamaras) abrirCamaras(false);
+  estado = 'susto';
+  sustoT = 0;
+  culpable = m;
+  linterna.visible = true;
+  sonidoSusto();
+  if (document.exitPointerLock) document.exitPointerLock();
+}
+
+// ¿choca contra una pared si se pone en (x, z)?
+function choca(x, z) {
+  for (const [dx, dz] of [[-RADIO, -RADIO], [RADIO, -RADIO], [-RADIO, RADIO], [RADIO, RADIO]]) {
+    const [f, c] = celda(x + dx, z + dz);
+    if (bloqueado(f, c)) return true;
+  }
+  return false;
+}
+
+// =====================================================
+//  ACTUALIZAR: lo que pasa en cada momento
+// =====================================================
+function moverJugador(dt) {
+  if (enCamaras) return;   // mientras miras las cámaras no te mueves
+  const adelante = (teclas.KeyW ? 1 : 0) - (teclas.KeyS ? 1 : 0);
+  const lado = (teclas.KeyD ? 1 : 0) - (teclas.KeyA ? 1 : 0);
+  let mx = -Math.sin(giroH) * adelante + Math.cos(giroH) * lado;
+  let mz = -Math.cos(giroH) * adelante - Math.sin(giroH) * lado;
+  const largo = Math.hypot(mx, mz);
+  const moviendo = largo > 0;
+  const corriendo = moviendo && (teclas.ShiftLeft || teclas.ShiftRight) && aguante > 0;
+
+  // correr cansa; si paras, recuperas aguante
+  if (corriendo) aguante = Math.max(0, aguante - 100 / CONFIG.segundosCorriendo * dt);
+  else aguante = Math.min(100, aguante + 12 * dt);
+
+  if (moviendo) {
+    const vel = corriendo ? CONFIG.velocidadCorrer : CONFIG.velocidad;
+    mx = mx / largo * vel * dt;
+    mz = mz / largo * vel * dt;
+    if (!choca(jugador.x + mx, jugador.z)) jugador.x += mx;
+    if (!choca(jugador.x, jugador.z + mz)) jugador.z += mz;
+  }
+  // la cabeza se mueve un poco al andar
+  const balanceo = moviendo ? Math.sin(tiempo * (corriendo ? 13 : 8.5)) * (corriendo ? 0.06 : 0.035) : Math.sin(tiempo * 1.5) * 0.008;
+  camara.position.set(jugador.x, 1.62 + balanceo, jugador.z);
+  moverBrazos(dt, moviendo, corriendo);
+  camara.rotation.set(giroV + (Math.random() - 0.5) * 0.06 * sacudida, giroH + (Math.random() - 0.5) * 0.06 * sacudida, moviendo ? Math.sin(tiempo * 4.2) * 0.006 : 0);
+}
+
+// ¿estás mirando el botón de alguna puerta?
+function moverPuertas(dt) {
+  const fx = -Math.sin(giroH) * Math.cos(giroV), fy = Math.sin(giroV), fz = -Math.cos(giroH) * Math.cos(giroV);
+  botonMirado = null;
+  for (const p of puertas) {
+    const vx = p.boton.x - camara.position.x, vy = p.boton.y - camara.position.y, vz = p.boton.z - camara.position.z;
+    const d = Math.hypot(vx, vy, vz);
+    if (d < 9 && (vx * fx + vy * fy + vz * fz) / d > 0.95) botonMirado = p;
+  }
+  for (const p of puertas) {
+    if (energia <= 0) p.cerrada = false;   // sin energía, las puertas se abren solas…
+    p.bajada += ((p.cerrada ? 1 : 0) - p.bajada) * Math.min(1, dt * 7);   // baja o sube poco a poco
+    p.hoja.position.y = ALTO_PARED / 2 + (1 - p.bajada) * ALTO_PARED;
+    p.luzBoton.emissiveIntensity = p.cerrada ? 5 : (p === botonMirado ? 1.5 : 0.6);
+  }
+  if (enCamaras) { botonMirado = null; $('pista').textContent = ''; return; }
+  if (!botonMirado) $('pista').textContent = !enCamaras && energia > 0 && mirandoMonitores() ? 'Pulsa E para ver las cámaras' : '';
+  else if (energia <= 0) $('pista').textContent = 'No hay energía…';
+  else $('pista').textContent = botonMirado.cerrada ? 'Pulsa E para abrir la puerta' : 'Pulsa E para cerrar la puerta';
+}
+
+// el monstruo intenta avanzar; si hay una puerta cerrada, golpea y al final se rinde
+function intentarMover(m, dx, dz, dt) {
+  const [f, c] = celda(m.x + dx, m.z + dz);
+  if (bloqueado(f, c)) {
+    m.esperaT = (m.esperaT || 0) + dt;
+    if (Math.random() < 0.025) sonido(140, 50, 0.3, 0.5, 'square');   // ¡PUM! golpes en la puerta
+    if (m.esperaT > 4) { m.calmado = 12; m.esperaT = 0; m.objetivo = null; m.camino = []; }
+    return false;
+  }
+  m.x += dx; m.z += dz;
+  return true;
+}
+
+function moverMonstruos(dt) {
+  let masCerca = Infinity;
+  for (const m of monstruos) {
+    // ¿ya es su hora de despertarse?
+    if (!m.despierto) {
+      if (horaActual() >= m.hora && tiempo > 6) m.despierto = true;
+      else { m.grupo.position.set(m.x, 0, m.z); animarCuerpo(m, 0.05, dt); continue; }
+    }
+    const dist = Math.hypot(jugador.x - m.x, jugador.z - m.z);
+    masCerca = Math.min(masCerca, dist);
+    if (m.calmado > 0) m.calmado -= dt;
+    const persigue = dist < CONFIG.distanciaCaza && !(m.calmado > 0);
+
+    // cada poco, piensa por dónde ir
+    m.tCamino -= dt;
+    if (m.tCamino <= 0) {
+      m.tCamino = 0.4;
+      let destino;
+      if (persigue) destino = celda(jugador.x, jugador.z);
+      else {
+        if (!m.objetivo || m.camino.length === 0) m.objetivo = celdaAlAzar();
+        destino = m.objetivo;
+      }
+      m.camino = buscarCamino(celda(m.x, m.z), destino);
+    }
+
+    // camina hacia la siguiente casilla del camino
+    const vel = m.velocidad * (persigue ? 1 : 0.6);
+    let mirarX = jugador.x, mirarZ = jugador.z, anda = false;
+    if (m.camino.length) {
+      const p = centro(m.camino[0][0], m.camino[0][1]);
+      const dx = p.x - m.x, dz = p.z - m.z, d = Math.hypot(dx, dz);
+      if (d < 0.2) m.camino.shift();
+      else anda = intentarMover(m, dx / d * vel * dt, dz / d * vel * dt, dt);
+      if (!persigue) { mirarX = p.x; mirarZ = p.z; }
+    } else if (persigue && dist > 0.01) {
+      anda = intentarMover(m, (jugador.x - m.x) / dist * vel * dt, (jugador.z - m.z) / dist * vel * dt, dt);
+    }
+    animarCuerpo(m, anda ? vel : 0.05, dt);
+    m.grupo.position.set(m.x, Math.abs(Math.sin(m.fase)) * 0.03, m.z);
+    m.grupo.lookAt(mirarX, m.grupo.position.y, mirarZ);
+
+    // si se mueve delante de la cámara que miras, hay interferencias
+    if (enCamaras && anda && Math.random() < 0.004) {
+      const c = CAMARAS[camActual].ojo.position;
+      if (Math.hypot(c.x - m.x, c.z - m.z) < 16) estaticaT = 0.5;
+    }
+    // ¡te ha pillado!
+    if (dist < 0.9) { asustar(m); return; }
+  }
+
+  // latido del corazón si hay un monstruo cerca
+  latidoT -= dt;
+  if (masCerca < 9 && latidoT <= 0) {
+    sonidoLatido();
+    latidoT = 0.35 + masCerca / 12;
+  }
+  $('aviso').textContent = masCerca < 6 ? '¡CORRE!' : '';
+  // la linterna falla cuando un monstruo está cerca
+  linterna.intensity = masCerca < 8 && Math.random() < 0.15 ? Math.random() * 0.5 : 1.7;
+  if (apagonT > 0) linterna.intensity = 0;   // en un apagón, también falla la linterna
+}
+
+function parpadearLuces(dt) {
+  for (const l of luces) {
+    let v = l.normal;
+    if (l.roto && Math.random() < 0.06) v = Math.random() < 0.6 ? 0 : l.normal * 1.3;   // algunas están estropeadas
+    if (energia <= 0 && l === luces[0]) v = 0;
+    if (apagonT > 0) v = 0;   // apagón de un susto
+    l.luz.intensity = v;
+    l.tuboMat.emissiveIntensity = v > 0 ? 2.5 * v / l.normal : 0.05;
+  }
+}
+
+// las pantallas de la sala de seguridad muestran interferencias
+function moverPantallas() {
+  if (energia > 0) return;   // con energía, los monitores enseñan las cámaras
+  for (const p of pantallas) {
+    if (p.mat.emissiveMap !== p.t) { p.mat.emissiveMap = p.t; p.mat.needsUpdate = true; }
+    if (Math.random() < 0.5) continue;
+    const g = p.c.getContext('2d');
+    const img = g.createImageData(128, 96);
+    const apagada = energia <= 0;
+    for (let i = 0; i < img.data.length; i += 4) {
+      const fila = (i / 4 / 128) | 0;
+      const v = apagada ? 0 : Math.random() * 110 + (fila % 3 === 0 ? 0 : 25);
+      img.data[i] = v * 0.55; img.data[i + 1] = v; img.data[i + 2] = v * 0.75; img.data[i + 3] = 255;
+    }
+    g.putImageData(img, 0, 0);
+    p.t.needsUpdate = true;
+  }
+}
+
+function actualizar(dt) {
+  parpadearLuces(dt);
+  moverPantallas();
+
+  if (estado === 'susto') {
+    sustoT += dt;
+    // el monstruo se te pone delante de la cara
+    const m = culpable;
+    const fx = -Math.sin(giroH), fz = -Math.cos(giroH);
+    m.grupo.position.set(camara.position.x + fx * 0.95, 1.62 - 1.92 * m.info.tamano, camara.position.z + fz * 0.95);
+    linterna.intensity = 0.5 + Math.random() * 0.4;   // la linterna parpadea del susto
+    m.grupo.lookAt(camara.position.x, m.grupo.position.y, camara.position.z);
+    animarCuerpo(m, 6, dt);
+    camara.rotation.set(giroV * 0.2 + (Math.random() - 0.5) * 0.08, giroH + (Math.random() - 0.5) * 0.08, (Math.random() - 0.5) * 0.06);
+    $('flash').style.opacity = Math.floor(sustoT * 12) % 2 ? 0.2 : 0;
+    if (efectoCine) efectoCine.uniforms.susto.value = Math.min(1, sustoT * 2) * 0.4;
+    if (sustoT > 1.8) {
+      estado = 'perdido';
+      $('flash').style.opacity = 0;
+      $('culpableTxt').textContent = 'Te atrapó: ' + m.info.nombre + ' · Aguantaste hasta las ' + textoHora();
+      $('perdido').classList.remove('oculto');
+    }
+    return;
+  }
+  if (estado === 'despertar') { actualizarDespertar(dt); return; }
+  if (estado !== 'jugando') return;
+
+  tiempo += dt;
+  if (tiempo >= 6 * CONFIG.segundosPorHora) {
+    estado = 'ganado';
+    silenciarAmbiente();
+    guardarNoche(noche);
+    $('ganadoTxt').textContent = '¡HAS SOBREVIVIDO A LA NOCHE ' + noche + '!';
+    if (noche === NOCHES.length) {
+      const hechas = pistasEncontradas(), total = hechas.length;
+      const claves = PISTAS.filter(p => p.clave && hechas.includes(p.id)).length;
+      const secreto = total === PISTAS.length
+        ? `<br><br>🌟 <b>FINAL SECRETO:</b> ¡has encontrado las ${PISTAS.length} pistas! Eres el mejor detective del hospital. Antes de irse, ${NIÑA} te deja su caja de música como regalo… y Botones te dice adiós con la mano.` : '';
+      $('ganadoTxt').innerHTML = claves === 12
+        ? `🏆 FINAL VERDADERO 🏆<br><br>Has encontrado las 12 pistas clave. Llevas el diario de la ${DOCTORA} a la policía y el hospital se cierra para siempre.<br>Todo el mundo conoce por fin la verdad.<br><br>${NOCHES[noche - 1].final} Tomás también.` + secreto
+        : `¡HAS SOBREVIVIDO A LA ÚLTIMA NOCHE!<br><br>Pero aún no sabes toda la verdad… (⭐ ${claves}/12 pistas clave)<br>Encuéntralas todas para ver el final verdadero.`;
+    }
+    $('ganado').classList.remove('oculto');
+    if (document.exitPointerLock) document.exitPointerLock();
+    return;
+  }
+  // la energía baja (más si hay puertas cerradas)
+  const cerradas = puertas.filter(p => p.cerrada).length;
+  energia = Math.max(0, energia - (CONFIG.gastoBase + cerradas * CONFIG.gastoPuerta + (enCamaras ? CONFIG.gastoCamaras : 0)) * dt);
+  if (energia <= 0 && enCamaras) abrirCamaras(false);   // sin energía, las cámaras se apagan
+  actualizarMonitores(dt);
+  if (estaticaT > 0) estaticaT -= dt;
+  if (enCamaras) {
+    // la cámara se mueve sola de un lado a otro, despacito
+    const cam = CAMARAS[camActual];
+    cam.ojo.rotation.y = cam.giroBase + Math.sin(tiempo * 0.4) * 0.12;
+    const minutos = Math.floor((tiempo % CONFIG.segundosPorHora) / CONFIG.segundosPorHora * 60);
+    $('cctvFecha').textContent = textoHora().replace(' AM', ':' + String(minutos).padStart(2, '0') + ' AM') + '  ·  14/03/1987';
+  }
+  if (energia <= 0 && luzEscritorio) luzEscritorio.intensity = 0;
+
+  moverReloj(tiempo / CONFIG.segundosPorHora);   // el reloj de la pared marca la hora del juego
+  moverJugador(dt);
+  moverPuertas(dt);
+  revisarPistas(tiempo);
+  moverMonstruos(dt);
+  if (estado === 'jugando') actualizarSustos(dt);
+  if (estado !== 'jugando') return;
+
+  // el polvo te sigue y gira despacito
+  polvo.position.set(jugador.x, 1.5, jugador.z);
+  polvo.rotation.y += dt * 0.02;
+
+  // actualizar los textos
+  $('hora').textContent = textoHora();
+  $('aguante').firstElementChild.style.width = aguante + '%';
+  $('aguante').firstElementChild.style.background = aguante > 30 ? '#4c4' : '#d44';
+  $('energia').firstElementChild.style.width = energia + '%';
+  $('energia').firstElementChild.style.background = energia > 25 ? '#e0c040' : '#d44';
+}
+
+// =====================================================
+//  EL BUCLE DEL JUEGO: se repite unas 60 veces por segundo
+// =====================================================
+camara.position.set(jugador.x, 1.62, jugador.z);
+camara.rotation.set(giroV, giroH, 0);
+const reloj = new THREE.Clock();
+function bucle() {
+  const dt = Math.min(0.1, reloj.getDelta());
+  actualizar(dt);
+  dibujarHistoria(performance.now() / 1000, dt);
+  brazos.visible = estado !== 'historia';
+  // ¿qué ojo usamos? el tuyo, el de una cámara de seguridad o el de la película
+  let ojo = camara, modoCCTV = false;
+  if (enCamaras && estado === 'jugando') { ojo = CAMARAS[camActual].ojo; modoCCTV = true; }
+  if (estado === 'historia' && escenaActual) {
+    const cctv = escenaActual.def.cctv;
+    if (cctv !== undefined) { ojo = CAMARAS[cctv].ojo; modoCCTV = true; } else ojo = camHistoria;
+  }
+  if (modoCCTV) { ojo.aspect = innerWidth / innerHeight; ojo.updateProjectionMatrix(); }
+  const dibujar = () => {
+    if (composer) {
+      pasoRender.camera = ojo;
+      efectoCine.uniforms.tiempo.value = performance.now() / 1000 % 100;
+      efectoCine.uniforms.modoCamara.value = modoCCTV ? 1 : 0;
+      efectoCine.uniforms.estatica.value = Math.max(0, estaticaT) * 1.6;
+      composer.render();
+    } else renderer.render(escena, ojo);
+  };
+  if (modoCCTV) conVisionNocturna(dibujar); else dibujar();
+  requestAnimationFrame(bucle);
+}
+$('cargando').classList.add('oculto');
+bucle();
+</script>
 </body>
 </html>
